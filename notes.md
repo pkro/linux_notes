@@ -17,3 +17,6 @@ This works (NOT using xargs):
   
     cd `locate --limit 1 DOOM2.WAD | grep -o "^.*\/"`
 
+Or, using xargs again and dirname command:
+
+    cd `locate --limit 1 DOOM2.WAD | xargs dirname`
