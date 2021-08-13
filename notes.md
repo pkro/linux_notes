@@ -63,4 +63,22 @@ Ctrl+key commandkey (press ctrl and key simultanously, then release and press co
 - screen -ls -> find active screen session(s), reattach to a specific one with screen -r <number at front of session name before .pts[...]>
 
 
+### Give a specified group make a directory access to a folder
+
+Can be useful to give own user and apache write access to a folder that is linked in htdocs.
+
+Here, we want to give the user "pk" and "daemon" write (and read / execute) access to the folder php_notes.
+    
+    # create new group (if necessary)
+    sudo groupadd pkandapache
+    # add users to group
+    sudo usermod -a -G pkandapache pk
+    sudo usermod -a -G pkandapache daemon
+    # change group owner of folder to pkandapache
+    sudo chgrp -R pkandapache php_notes
+    # set permissions as necessary, first digit = owner, second = group, third = everyone else
+    # digit = rwx in binary, so read + execute = 1 0 1 = 5
+    chmod -R 775 php_notes/
+
+
 
