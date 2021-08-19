@@ -86,3 +86,9 @@ Here, we want to give the user "pk" and "daemon" write (and read / execute) acce
 In Mint(or Cinnamon) the key can be changed or disabled under
 
 system settings > windows > behavior > 'Special key to move and resize window'
+
+### Open port
+        
+        E.g. to fix IntelliJ / PHPStorm not accepting incoming XDebug connections on port 9003 from Docker
+
+        sudo iptables -A INPUT -p tcp -d 0/0 -s 0/0 --dport 9003 -j ACCEPT
