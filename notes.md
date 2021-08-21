@@ -92,3 +92,7 @@ system settings > windows > behavior > 'Special key to move and resize window'
         E.g. to fix IntelliJ / PHPStorm not accepting incoming XDebug connections on port 9003 from Docker
 
         sudo iptables -A INPUT -p tcp -d 0/0 -s 0/0 --dport 9003 -j ACCEPT
+        
+        OR 
+        
+        sudo ufw allow <port_nr>
