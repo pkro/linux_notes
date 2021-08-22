@@ -104,3 +104,10 @@ system settings > windows > behavior > 'Special key to move and resize window'
 Among other things (try curl cheat.sh/nc for common usages) useful for logging traffic on a specific port:
 
     nc -l 9003 > xdebug3connections.log
+    
+
+### Use command output as command parameters
+
+use command1 $(command2) to use command2's output as parameters for command2:
+
+`docker rm $(docker ps -a -f status=exited -q)`
