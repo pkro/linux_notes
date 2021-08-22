@@ -45,6 +45,7 @@ Or, using xargs again and dirname command:
 
 
 ### Background tasks with nohup / screen
+
 #### nohup
 Lets a process run in the background (you can log out from the terminal / server and it keeps running); Command output is by default to nohup.log in the current directory. Installed by default on most systems.
     nohup <command>
@@ -96,3 +97,10 @@ system settings > windows > behavior > 'Special key to move and resize window'
         OR 
         
         sudo ufw allow <port_nr>
+        
+        
+### nc
+
+Among other things (try curl cheat.sh/nc for common usages) useful for logging traffic on a specific port:
+
+    nc -l 9003 > xdebug3connections.log
