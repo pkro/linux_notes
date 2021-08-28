@@ -369,14 +369,288 @@ Logs rotate and get archived into compressed files, this can be configured in `/
 
 Archived files can be viewed with `zcat` and `zless`
 
+#### System startup
+
+POST + boot -> Bootloader (Grub, LILO) -> Startup (SysV Init, Systemd)
+
+First, the system's firmware locates bootable instructions on media and executes them.
+
+Then, the bootable code loads further bootable software.
+
+#### Grub
+
+- Grand Unified Bootloader
+- provides a menu for user-configurable boot options, an interactive shell and troubleshooting options.
+- Grub then loads the kernel from the /boot filesystem and hands off control.
+- Will look automatically to other bootable OSs on the system
+- 
+Configuration options:
+
+- Scripts in `/etc/grub.d`, configuration file in `/etc/default/grub`
+- changes must be prepared with `grub2-mkconfig`
+
+#### SysV init
+
+- Initialization system responsible for starting and controlling processes. Most current distros use `Systemd`.
+- Init runs as PID 1 and is the parent process of all other processes on the system.
+- Runlevels represent discrete operational states: ![runlevels chart](readme_images/runlevels.png). Runlevel can be 
+  viewed with `runlevel`, which shows the previous (N=none) and current runlevel. A runlevel can be set with `init`. 
+- Each runlevel has scripts to be run at specific runlevels in `/etc/init.d`.
+- The scripts provide a header to indicate at which runlevel they should be started / stopped:
+
+      ### BEGIN INIT INFO
+      # Provides:          rsyncd
+      # Required-Start:    $remote_fs $syslog
+      # Required-Stop:     $remote_fs $syslog
+      # Should-Start:      $named autofs
+      # Default-Start:     2 3 4 5
+      # Default-Stop:
+      # Short-Description: fast remote file copy program daemon
+      # Description:       rsync is a program that allows files to be copied to and
+      #                    from remote machines in much the same way as rcp.
+      #                    This provides rsyncd daemon functionality.
+      ### END INIT INFO
+
+- The scripts are linked into directories `/etc/rc0.d` to `/etc/rc6.d` corresponding to their runlevels. Links 
+  starting with "S" indicate that the "start" section of the script should be run at the specific runlevel, a "k" 
+  means the script should be killed at this runlevel. The number behind the letter indicates the relative order the 
+  scripts should be run in.
 
 
+    pk@pk-lightshow:/etc$ ls -l rc4.d/
+    total 0
+    lrwxrwxrwx 1 root root 17 Aug  7 18:04 K01apache2 -> ../init.d/apache2
+    lrwxrwxrwx 1 root root 29 Aug  7 18:04 K01apache-htcacheclean -> ../init.d/apache-htcacheclean
+    lrwxrwxrwx 1 root root 15 Sep  6  2019 S01acpid -> ../init.d/acpid
+    lrwxrwxrwx 1 root root 17 Sep  6  2019 S01anacron -> ../init.d/anacron
+    lrwxrwxrwx 1 root root 22 Sep  6  2019 S01avahi-daemon -> ../init.d/avahi-daemon
+    lrwxrwxrwx 1 root root 19 Sep  6  2019 S01bluetooth -> ../init.d/bluetooth
+    [...]
+
+- Own scripts can be put into `/etc/rc.local` (*seems to be missing in mint?*)
+- The scripts can be run by hand using `sudo service [servicename] [args]`, e.g. `sudo service networking restart`
+
+#### Systemd
+
+- System and service manager used by most linux system
+- acts as init system during startup (and replaces SysV)
+- Manages services after a system has started
+
+- After kernel startup, systemd takes responisibility for starting process
+- Starts as PID 1, parent of all other processes
+- Takes the system through various targets (the equivalent to runlevels) to the desired state / target (usually 
+  "graphical")
+- Targets are composed of units which each define a process a service; units can run in parallel, speeding up the 
+  startup process.
+
+Noteworthy targets:
+
+- Emergency: read-only root filesystem access and basic tools
+- Recue: r/w filesystem and some system services
+
+Units can be viewed, stopped, started, enabled and disabled with `systemctl`, a specific unit with `systemctl status 
+[unitname]`.
+
+#### Cron
+
+- Runs tasks periodically.
+- reads a list of tasks every minute and runs them appropriately
+- cron reads from 3 places:
+  - /var/spool/cron
+  - /etc/cron.d
+  - /etc/crontab
+    - the default entries here refer to directories with shell scrips in e.g. `/etc/cron.daily`
+    - User scripts can be put in these directories
+  - Root scripts with specific timings should be put into `/etc/cron.d`
+  - User scripts can be added with `crontab -e`, which starts an editor with a nice template
+
+Crontab format
+
+![crontab format](readme_images/crontab.png)
+
+Cron tasks only run when the system is powered on; when it's off during the scheduled time, it doesn't catch up and 
+runs scripts scheduled earlier when it's turned on. For this, `anacron` is used. Anacron rus daily, while cron runs 
+every minute.
+Tasks for anachron are defined in `/etc/anacrontab`
+
+#### chroot
+
+- Isolates a process from the rest of the filesystem
+- sets an effective root directory the process can't see out of
+- anything needed to run must be present in the chroot, typically `/sys, /proc, /bin` need to be mountet in the new 
+  chroot directory
+- copy needed files into place
+- to see what dependencies a program has, use `ldd`
+
+      pk@pk-lightshow:/etc/cron.d$ ldd /bin/bash
+      linux-vdso.so.1 (0x00007ffdcfbf4000)
+      libtinfo.so.5 => /lib/x86_64-linux-gnu/libtinfo.so.5 (0x00007fa7cc701000)
+      libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fa7cc4fd000)
+      libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fa7cc10c000)
+      /lib64/ld-linux-x86-64.so.2 (0x00007fa7ccc45000)
+
+- often used for system rescue / live boot or test software only with defined dependencies
+
+#### User and group management
+
+- Users = humans or services
+- groups: organizational units of users
+- Users are defined in `/etc/passwd`
+- users with id 1000+ are regular / human users
+- File rights are based on the numeric user ID, not the login name! So be careful when deleting and adding a user 
+  with the same numeric ID.
+
+/etc/passwd:
+
+`[username]:[user has encrypted password in /etc/shadow file]:[userID]:[id of primary groups of user]:[gecos (name, 
+phone etc)]:[users home folder]:[users shell]`
+
+e.g. `pk:x:1000:1000:pk,,,:/home/pk:/bin/bash`
+
+/etc/shadow:
+
+`[username]:[encrypted password OR *=disabled, !=locked]:[days since last pw change]:... other expiry settings`
+
+e.g. `cups-pk-helper:*:18106:0:99999:7:::`
+
+/etc/group:
+
+`[groupname]:[group password, unused]:[comma separated usernames]
+
+Commands to show user or group info: `id`, `groups`, `getent [group|services|passwd|...]`
+
+- Adding a user: `sudo adduser [username]` creates user, group and home from `/etc/skel` home folder template
+- Adding a group: `sudo addgroup [groupname]`
+- Add user to group (and other user related tasks): `sudo usermod -aG [groupname] [username]`
+- `usermod` is used to all other user related tasks (change login name, password etc.).
+- Change user password with `passwd`.
+- Delete group / user with `delgroup` / `deluser` (home dir will still exist)
+
+#### Service management
+
+- managed by system (systemd), managed by user by `systemctl`. Info on units (see [systemd](#systemd) section).
+- Unit configuration files in `/lib/systemd/system/`, e.g. `/lib/systemd/system/rsyslog.service`; own units can be 
+  added here as well.  
+
+Common systemctl commands:
+![common systemctl commands](readme_images/systemctl.png)
+
+#### Backup with rsync
+
+- copies files from a to b
+- synchronize folders
+- skip unchanged files
+
+- Basic incremental backup: `rsync -avz * /media/pk/usb-disk`
+- rsync can use network and remote paths
+
+#### Splitting and combining files
+
+    pk@pk-lightshow:~/Pictures/sky$ md5sum sky.jpg
+    a02179066495e5ed4303336170845d6a  sky.jpg
+    pk@pk-lightshow:~/Pictures/sky$ split -b 100KB sky.jpg -d sky.jpg.part
+    pk@pk-lightshow:~/Pictures/sky$ ls
+    sky.jpg         sky.jpg.part01  sky.jpg.part03  sky.jpg.part05
+    sky.jpg.part00  sky.jpg.part02  sky.jpg.part04
+    pk@pk-lightshow:~/Pictures/sky$ cat $( ls sky.jpg.part* ) >> sky_reassembled.jpgpk@pk-lightshow:~/Pictures/sky$ echo "a02179066495e5ed4303336170845d6a  sky.jpg" | md5sum -c
+    sky.jpg: OK
 
 
+#### Environment configuration files
 
+Types of shells:
 
+![Types of shells](readme_images/shelltypes.png)
 
+File(s) read by bash:
 
+- Login shell: *one of* (the first found in `~/`)
+  - /etc/profile
+  - ~/.bash_profile
+  - ~/.bash_login
+  - ~/.profile # non-bash settings, like PATH variable etc
+
+- Non-Login shell ("*rc" = "run commands")
+  - /etc/bash.bashrc # system settings
+  - ~/.bashrc # user level settings, bash related settings such as PS1, aliases etc
+
+The scripts usually reference each other, so login shells include settings from non-login shells and vice versa 
+(probably not true generalized like this)
+
+Additional definitions read by /etc/profile in `/etc/profile.d`
+
+#### Dotfiles
+
+User customized configuration files and directories in home folder such as `~/.profile`, `~/.vimrc`, `~/.ssh/`.
+
+They can be re-read in the current shell using e.g. `source .profile`.
+
+#### Path variable explored
+
+- `$PATH` contains directories where the shell looks for **executables** (in the order they are defined; use `which 
+[command]` to see which one is executed). 
+- The initial PATH comes from /etc/environment
+- Add paths (temporarily in the shell) with `export PATH=[new directory]:$PATH` or `$PATH:[new directory]` to add it to 
+the end.
+- Use `PATH=[directory]:$PATH` in `.profile` for permanent paths for the current user.
+- These don't affect sudo commands. Change the sudoer path with `sudo visudo`.
+
+#### Browsing with the directory stack
+
+- Using `cd`
+  - `cd` to go to user's home dir, 
+  - `cd -` to go to the previous directory
+    - Using the directory stack
+      - Create a list of directories to move between quickly
+      - add directories with `pushd` and remove with `popd`, view with `dirs`, clear with `dirs -c`
+
+#### Finding and locating files
+
+- `find` actively searches (with the user rights), e.g. `find / -name "*.png"`
+- `locate` uses a daily updated file database (force update with `sudo updatedb`), e.g. `locate -i *.png` (`-i` = case 
+  insensitive); use `-b` to 
+  indicate that the file should *start* with the search string (as opposed to being a substring).
+
+#### Working with swap 
+
+- swap space can be file or partition
+- `swapon` manages / shows (`-v`option) swap ressources, `swapoff` removes resources from the swap pool, `mkswap` 
+  sets up a file or partition as swap
+
+Adding a file to the swap pool:
+
+    # create empty file; if=input file, of=output file, bs=block size, count= num blocks
+    sudo dd if=/dev/zero of=/secondaryswap bs=1M count=2048
+    # make it a swap file
+    sudo mkswap /secondaryswap
+    sudo chmod 0600 /s
+    sudo swapon /secondaryswap
+
+#### Read and write caches
+
+- force writes to disk with `sync`
+- view write operations with `iotop`
+- disable write cache on e.g. sdb with `hdparm -W 0 /dev/sdb`, enable with `hdparm -W 1 /dev/sdb`
+- mount a disk without a write cache: `mount -o sync /dev/sdb /mnt/mydisk`
+
+#### Terminals / consoles / TTYs 
+
+- A terminal emulator provides a text based environment (usually to run a shell) in a graphical desktop environment.
+- Open text based full screen console(s) (not terminal emulator) from desktop with `ctrl-alt-F1 (to F6)`, back to 
+  desktop with `ctrl-alt-F7`.
+- View sessions with `who` (tty7 or :0 = desktop)
+- pts = remote ssh sessions (?)
+
+#### Exploring journalctl
+
+- Query the systemd journal with `journalclt`; add `-u [unitname]` to view journal of specific units.
+- specify priority with `-p [0-x]`
+- specify iso date or timeframe: `journalctl -p 3 --since "2021-08-27 00:00:00"` or `journalctl -p 3 --since "1 hour 
+  ago"`
+
+### Filesystem basics
+
+#### Files on linux
 
 
 ## Not course related
