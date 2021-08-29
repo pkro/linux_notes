@@ -847,6 +847,7 @@ Uses:
 - temporarily mask or replace a file by another
 
 
+
     :~/tmp$ mkdir mylogs
     :~/tmp$ sudo mount --bind /var/log mylogs
     :~/tmp$ ls -l mylogs/ 
@@ -939,6 +940,39 @@ From the comment block at the top of the fstab file:
   - `getfacl [file]` shows an items ACLs
 
 ### Working with text
+
+#### vim
+
+Just do the included `vimtutor` command for the very basics.
+
+#### Emacs
+
+- start with `emacs` or `emacs -nw` for the console version
+- How to read the keyboard commands in emacs: 
+  - `C-h r`: press `ctrl-h`, release (ctrl can be kept pressed), press `r`
+  - `M` is the meta key or escape key
+- Press enter on underlined links to go to the page
+- Works with buffers and frames
+- Tutorial: `ctrl-h t`
+
+#### nano
+
+Mostly self explanatory easy simple editor.
+
+`^` = `ctrl`
+
+#### grep
+
+- `grep [string] [file]`: searches file for string
+- `grep --color=auto`: colorizes output of found items
+- `grep -n`: shows the line numbers of search result
+- `grep -C [n]`: shows n surrounding lines of result
+- `grep -i`: case insensitive
+- `grep -v`: invert search (show only lines NOT matching string)
+- `[command] | grep [string]`: search command output (pipe into grep)
+- `grep -a`: treats binary files as text (though better use `strings [file] | grep [string]`)
+
+
 
 
 
