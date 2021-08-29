@@ -847,17 +847,16 @@ Uses:
 - temporarily mask or replace a file by another
 
 
-
-    :~/tmp$ mkdir mylogs
-    :~/tmp$ sudo mount --bind /var/log mylogs
-    :~/tmp$ ls -l mylogs/ 
-    # these are the same files as in /var/log, so deleting one in either place 
-    # will delete it  from both (or does it copy on write? confused.)!
-    total 15128
-    -rw-r--r--  1 root              root              11241 Aug 22 11:01 alternatives.log
-    -rw-r--r--  1 root              root               2394 Jul 24 16:46 alternatives.log.1
-    [...]
-    pk@pk-lightshow:~/tmp$ sudo umount mylogs
+      :~/tmp$ mkdir mylogs
+      :~/tmp$ sudo mount --bind /var/log mylogs
+      :~/tmp$ ls -l mylogs/ 
+      # these are the same files as in /var/log, so deleting one in either place 
+      # will delete it  from both (or does it copy on write? confused.)!
+      total 15128
+      -rw-r--r--  1 root              root              11241 Aug 22 11:01 alternatives.log
+      -rw-r--r--  1 root              root               2394 Jul 24 16:46 alternatives.log.1
+      [...]
+      pk@pk-lightshow:~/tmp$ sudo umount mylogs
 
 This also works with files and does copy-on-write:
 
