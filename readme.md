@@ -521,7 +521,8 @@ Commands to show user or group info: `id`, `groups`, `getent [group|services|pas
 
 - Adding a user: `sudo adduser [username]` creates user, group and home from `/etc/skel` home folder template
 - Adding a group: `sudo addgroup [groupname]`
-- Add user to group (and other user related tasks): `sudo usermod -aG [groupname] [username]`
+- Add user to group (and other user related tasks): `sudo usermod -aG [groupname] [username]`; example (add user to 
+  sudo group): `sudo usermod -aG sudo pk`
 - `usermod` is used to all other user related tasks (change login name, password etc.).
 - Change user password with `passwd`.
 - Delete group / user with `delgroup` / `deluser` (home dir will still exist)
@@ -651,6 +652,294 @@ Adding a file to the swap pool:
 ### Filesystem basics
 
 #### Files on linux
+
+- Bits stored in blocks, managed by the filesystem (including metadata such as size, permissions, dates..). 
+  Locations of blocks are stored in inodes, indodes are kept in an inode table. File in the file tree are hardlinks 
+  to the files inode.
+
+  - File formats in linux are recognized by a "magic number" representing what's in a file. The `file` command can be 
+    used to read the metadata / magic number in the file header (the extension is just part of the filename). Use 
+    `stat` to display filesystem information about a file.
+
+        pk@pk-lightshow:~/Pictures$ file Selection_115.png
+        Selection_115.png: PNG image data, 600 x 234, 8-bit grayscale, non-interlaced
+        pk@pk-lightshow:~/Pictures$ stat Selection_115.png
+        File: Selection_115.png
+        Size: 44648           Blocks: 88         IO Block: 4096   regular file
+        Device: 821h/2081d      Inode: 12337485    Links: 1
+        Access: (0664/-rw-rw-r--)  Uid: ( 1000/      pk)   Gid: ( 1000/      pk)
+        Access: 2021-08-29 07:54:46.226274231 +0200
+        Modify: 2021-08-27 10:49:07.493838761 +0200
+        Change: 2021-08-27 10:49:07.493838761 +0200
+        Birth: -
+
+#### Archives
+
+- tar (tape archive) combines files to be read linearly
+  - this file is then (usually) gzip compressed
+  - base command: `tar c(reate)f(ile) [archiven.tar] [path/files]`
+  - view content of tar with `tar tf [archiven.tar]`
+  - extract with `tar xf [archive.tar]`, add  `-C [path]` to indicate a folder other than the current; tar will figure 
+    out if the archive is compressed by itself.
+  - compress with `z` (bzip): `tar cfz archive.tar.gz *.png`; 
+- `zip` / `unzip` as usual
+
+#### Permissions 101
+
+POSIX permissions scheme
+
+`ls -l` output:
+
+[unix file type][user permissions][group perm.][others perm.] [owner] [group] [size] [last modified] [name]
+
+Interpretation:
+
+- unix file types:
+    - d : directory
+    - s : socket
+    - p : pipe
+    - D : Door (only used in solaris)
+    - l : symbolic link etc.
+- permissions: [(r)ead (w)rite e(x)ecute]
+
+Change permissions with chmod, either symbolic or in octal notation:
+
+Symbolic:
+![chmod symbolic](readme_images/chmod1.png)
+
+Octal:
+![chmod symbolic](readme_images/chmod2.png)
+
+#### Loop devices
+
+- file that contains a file system; examples:
+  - ISO images
+  - snaps
+  - disk images (macOS)
+
+Create a loop device with `dd` or `fallocate`, create a filesystem with `mkfs.[filesystem]`; make it sparse (only 
+taking up as much space as needed for the files in it) with `fallocate -d [image]` (it will still show the filesize 
+indicated on creation; `du [loop device filename]` shows the real size.
+
+Loop devices are listed in /dev
+
+
+    pk@pk-lightshow:~$ fallocate -l 1G myimage
+    pk@pk-lightshow:~$ ls -l my*
+    -rw-rw-r-- 1 pk pk 1073741824 Aug 29 08:29 myimage
+    pk@pk-lightshow:~$ sudo mkfs.ext4 myimage
+    mke2fs 1.44.1 (24-Mar-2018)
+    Discarding device blocks: done                            
+    Creating filesystem with 262144 4k blocks and 65536 inodes
+    [...]
+    ~$ fallocate -d myimage
+    ~$ du -h myimage
+    648K    myimage
+    ~$ sudo mkdir /mnt/myfiles
+    ~$ sudo mount myimage /mnt/myfiles
+    ~$ cd /mnt/myfiles/
+    /mnt/myfiles$ sudo chmod 777 .
+    /mnt/myfiles$ touch file_{1..10}.txt
+    /mnt/myfiles$ ls
+    file_10.txt  file_1.txt  file_2.txt  file_3.txt  file_4.txt  file_5.txt  file_6.txt  file_7.txt  file_8.txt  file_9.txt  lost+found
+    /mnt/myfiles$ ls -l /dev/loop*
+    brw-rw---- 1 root disk  7,   0 Aug 29 07:07 /dev/loop0
+    brw-rw---- 1 root disk  7,   1 Aug 29 07:07 /dev/loop1
+    [...]
+    pk@pk-lightshow:~$ sudo umount /mnt/myfiles 
+    pk@pk-lightshow:~$ rm myimage
+
+#### Configuring group file shares
+
+When making a folder writable by all users, files inside will still be owned / writable only by the creator.
+
+Solution:
+- create a group: `sudo addgroup filesharers`
+- add user(s) to group: `sudo usermod -aG filesharers [username]`; (affected user must usually log out and in for 
+  this to work. Use `id` to see groups the user is assigned to).
+- check settings for how files are created for the current logged in user with `umask` or `umask -S`.
+- set it so (for the current user in the current session only) that the group members get read/write (and in case of 
+  services like apache also 
+  execute access (?)): `umask 002`
+
+
+From wikipedia:
+
+    $ umask 007    # set the mask to 007
+    $ umask        # display the mask (in octal)
+    0007           #   0 - special permissions (setuid | setgid | sticky )
+                   #   0 - (u)ser/owner part of mask
+                   #   0 - (g)roup part of mask
+                   #   7 - (o)thers/not-in-group part of mask
+    $ umask -S     # display the mask symbolically
+    u=rwx,g=rwx,o=
+
+The `u=rwx,g=rwx,o=` format can also be used as umask argument. 
+
+![umask octal digits](readme_images/umask_octal.png)
+
+See [here](https://en.wikipedia.org/wiki/Umask) for more.
+
+TODO: Find out how to best do this so the docker apache and the hosts user have the same read / write permissions on 
+shared directories.
+
+This will probably involve setting / changing group or user IDs in docker so they comply with the ones on the host 
+system.
+
+[This article](https://www.cyberciti.biz/faq/linux-change-user-group-uid-gid-for-all-owned-files/) might be helpful.
+
+#### Managing space in the file system
+
+- `df -h`: high level view 
+- `sudo du -hd1 /`: shows sizes of directories, human readable, up to 1 level deep  
+- `du -hd0 /etc` or `du -sh /etc` just shows the size of `/etc`
+- `sudo find / -type f -size +100M -exec ls -sh {} \;` finds files larger than 100MB and displays them in a human 
+  readable form.
+
+#### Overlay file systems (mounts)
+
+Mounts a filesystem on top of another:
+
+![Overlay mount](readme_images/overlaymount.png)
+
+Newly created files will be added to the upper filesystem. For conflicting (existing) filenames, the upper filesystem 
+will be used.
+
+When a file from the lower filesystem is modified, it will be copied to the upper filesystem (the one on the lower 
+will be untouched - copy on write).
+
+    ~/tmp$ mkdir fs_a fs_b
+    ~/tmp$ touch fs_a/a_file_{0..5}
+    ~/tmp$ touch fs_b/b_file_{0..5}
+    ~/tmp$ echo "This is on filesystem A" > fs_a/myfile
+    ~/tmp$ echo "This is on filesystem B" > fs_b/myfile
+    ~/tmp$ mkdir working
+    ~/tmp$ mkdir myoverlay
+    # myoverlay is the actual filesystem to be used
+    # NO SPACES after commas in the parameters after -o!
+    ~/tmp$ sudo mount -t overlay overlay -o lowerdir=fs_a,upperdir=fs_b,workdir=working myoverlay
+    ~/tmp$ cd myoverlay/
+    ~/tmp/myoverlay$ ls
+    a_file_0  a_file_1  a_file_2  a_file_3  a_file_4  a_file_5  b_file_0  b_file_1  b_file_2  b_file_3  b_file_4  b_file_5  myfile
+    ~/tmp/myoverlay$ cat myfile
+    This is on filesystem B
+    ~/tmp/myoverlay$ nano a_file_0 # type some text
+    ~/tmp/myoverlay$ cat ../fs_b/a_file_0 # copy to upper on write
+    Hey this will change to filesystem b!
+    ~/tmp/myoverlay$ cat ../fs_a/a_file_0 # empty file unchanged
+    ~/tmp/myoverlay$
+    :~/tmp/myoverlay$ cd ..
+    :~/tmp$ sudo umount myoverlay
+
+
+Uses: 
+
+- embedded systems for filesystem protection of underlying read-only OS filesystem
+- container solutions such as docker
+- live boot disks
+
+#### Bind mounts
+
+- mount part of a filesystem in a specified place
+- used when chrooting to rescue a system
+- can be used to scope access
+- offer a read-only copy of a filesystem
+- temporarily mask or replace a file by another
+
+
+    :~/tmp$ mkdir mylogs
+    :~/tmp$ sudo mount --bind /var/log mylogs
+    :~/tmp$ ls -l mylogs/ 
+    # these are the same files as in /var/log, so deleting one in either place 
+    # will delete it  from both (or does it copy on write? confused.)!
+    total 15128
+    -rw-r--r--  1 root              root              11241 Aug 22 11:01 alternatives.log
+    -rw-r--r--  1 root              root               2394 Jul 24 16:46 alternatives.log.1
+    [...]
+    pk@pk-lightshow:~/tmp$ sudo umount mylogs
+
+This also works with files and does copy-on-write:
+
+    pk@pk-lightshow:~/tmp$ echo "this is the original file" > file1
+    pk@pk-lightshow:~/tmp$ echo "this is the OTHER file" > file2
+    pk@pk-lightshow:~/tmp$ sudo mount --bind file2 file1
+    pk@pk-lightshow:~/tmp$ cat file1
+    this is the OTHER file
+    pk@pk-lightshow:~/tmp$ sudo umount file1
+    pk@pk-lightshow:~/tmp$ cat file1
+    this is the original file
+
+#### Modifying the file system table
+
+- located at /etc/fstab
+- tells the system what to do with filesystems on various devices
+- often used to automount storage on system startup
+
+From the comment block at the top of the fstab file:
+
+`<file system> <mount point>   <type>  <options> <dump>  <pass>`
+
+- <file system>: identifiers such as 
+  - /dev/sdb1, (path to device in dev file system that identifies a disk or partition)
+  - //10.0.2.5\storage, (network address, smb...)
+  - UUID=123-345..., ID that doesn't change if the device node changes; ID can be shown by `sudo blkid`  
+- <mount point>: such as `/mnt/sdb5`
+- <file system type>: ext4, ntfs etc. Can be listed with `sudo lsblk -f`
+- <mount options>: varies by file system; defaults (most also available with `no-` prefix:
+  - rw: mount read/write
+  - suid: file system can allow SUID bits
+  - dev: file system will recognize block or character devices
+  - exec: files can be executed on the file system
+  - (no-)auto: file system mounts automatically at boot
+  - nouser: can only be mounted by admin users
+  - async: fs uses async I/O
+  - all mount options in `man mount`
+- <dump>: usually 0 (1=should be backed up by sump)
+- <pass>: check filesystem on mount and in what order (0=no,1=check first,2=check after 1)
+
+![fstab examples](readme_images/fstab_examples.png)
+
+#### Sticky bit (restricted deletion flag)
+
+- Marks a directory so that it can be read, edited and excecuted by everyone (`drwxrwsrwx `), but files in it can 
+  **only** 
+  edited deleted by the  creator. 
+- Useful for shared directories such as `/tmp`.
+- Set sticky bit using `sudo chmod 1777 [directory]` or `sudo chmod o+t [dir]` -> `drwxrwsrwt` (notice the "t" at the 
+  end)
+
+
+    pk@pk-lightshow:/srv/shared$ touch hey
+    pk@pk-lightshow:/srv/shared$ su testuser
+    testuser@pk-lightshow:/srv/shared$ rm hey
+    rm: remove write-protected regular empty file 'hey'? y
+    testuser@pk-lightshow:/srv/shared$ touch heyhomadebytestuser
+    testuser@pk-lightshow:/srv/shared$ su pk
+    pk@pk-lightshow:/srv/shared$ sudo chmod o+t ../shared
+    pk@pk-lightshow:/srv/shared$ rm heyhomadebytestuser
+    rm: remove write-protected regular empty file 'heyhomadebytestuser'? y
+    rm: cannot remove 'heyhomadebytestuser': Operation not permitted
+
+- Folder / files with the sticky bit can be found with `sudo find -perm /1000 2>/dev/null`
+
+#### Access control list (ACLs)
+
+- allows more granular control over access permissions
+- grant differing access to more than one user or group
+- Requires a file system that supports it
+- Items with ACLs are marked with a `+` at the end of the normal permissions: `-rw-rwxr--+`
+- Commands:
+  - `setfacl`
+    - `setfacl -set` replaces existing ACL
+    - `setfacl -m` modifies existing ACL
+    - `setfacl -x` removes an ACL, e.g. `setfacl -x u:pk testuserfile`
+    - Examples:
+      - `setfacl -m u:alex:r myfile` gives read permissions to user alex
+      - `setfacl -m g:marketing:rw myfile` gives read/write permissions to group marketing
+  - `getfacl [file]` shows an items ACLs
+
+### Working with text
+
 
 
 ## Not course related
