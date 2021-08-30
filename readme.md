@@ -982,6 +982,7 @@ Nothing new here
 - Operations on whole lines: 
 
 
+
     :~/tmp$ for ((i=1; i<=3; i++)); do echo "line ${i}"; done > mytext
     :~/tmp$ cat mytext 
     line 1
@@ -1102,8 +1103,13 @@ Nothing new here
 
 #### Basics
 
+(un-)installs software and manages dependencies from repos or packages (`.deb` or `.rpm`)
 
-
+- Debian, Ubuntu, mint etc: APT (front end for dpkg)
+- CentOS, Red Hat: Yum (front end for rpm)
+- `sudo apt update` to refresh list of packages
+- `sudo apt list [searchterm]`, `sudo apt show [package]`, `sudo apt search [search term incl. descriptions]` 
+- `sudo apt install [package]`
 
 
 ## Not course related
