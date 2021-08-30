@@ -971,6 +971,137 @@ Mostly self explanatory easy simple editor.
 - `[command] | grep [string]`: search command output (pipe into grep)
 - `grep -a`: treats binary files as text (though better use `strings [file] | grep [string]`)
 
+#### RegEx
+
+Nothing new here
+
+#### Sed (stream editor)
+
+- commonly used in command pipelines and scripts
+- parameters are defined in the parameter string at the beginning
+- Operations on whole lines: 
+
+
+    :~/tmp$ for ((i=1; i<=3; i++)); do echo "line ${i}"; done > mytext
+    :~/tmp$ cat mytext 
+    line 1
+    line 2
+    line 3
+    # a is the append "parameter"
+    :~/tmp$ sed "a new line after each" mytext
+    line 1
+    new line after each
+    line 2
+    new line after each
+    line 3
+    new line after each
+    # the original file isn't changed, all goes to stdout
+    :~/tmp$ cat mytext 
+    line 1
+    line 2
+    line 3
+    # (i)nsert
+    :~/tmp$ sed "i new line BEFORE each" mytext 
+    new line BEFORE each
+    line 1
+    new line BEFORE each
+    line 2
+    new line BEFORE each
+    line 3
+    :~/tmp$ sed "3i new line BEFORE line 3" mytext 
+    line 1
+    line 2
+    new line BEFORE line 3
+    line 3
+    :~/tmp$ sed "1d" mytext # delete line 1
+    line 2
+    line 3
+    :~/tmp$ sed "/line 1/a appended after line that matches the \"line 1\" regex" mytext
+    line 1
+    appended after line that matches the "line 1" regex
+    line 2
+    line 3
+    :~/tmp$
+
+- Operations replacing content of lines
+
+
+    :~/tmp$ sed "s/[Ll]ine/Row/" mytext
+    Row 1
+    Row 2
+    Row 3
+    # for greedy match, use /g
+    :~/tmp$ sed "s/[aeiou]/\_/g" mytext 
+    l_n_ 1
+    l_n_ 2
+    l_n_ 3
+    # replace (why do the "()" have to be escaped?)
+    :~/tmp$ sed "s/\([aeiou]\)/[\1]/g" mytext 
+    l[i]n[e] 1
+    l[i]n[e] 2
+    l[i]n[e] 3
+
+#### AWK
+
+- pronounced "awk" as in "hawk"
+- language to manipulate text
+- extract and transform text
+- examples:
+
+
+    # -e enables interpretation of backslashes, but rather use printf
+    :~/tmp$ echo -e "This text file\nhas a few lines\nthat take upp\na little bit of space" > myfile
+    :~/tmp$ cat myfile
+    This text file
+    has a few lines
+    that take upp
+    a little bit of space
+    :~/tmp$ awk '{print $1}' myfile
+    This
+    has
+    that
+    a
+    :~/tmp$ awk '{print $2 $1}' myfile
+    textThis
+    ahas
+    takethat
+    littlea
+    :~/tmp$ awk -F : '{print $1}' /etc/passwd
+    root
+    daemon
+    [...]
+    :~/tmp$ awk '{print(toupper($1))}' myfile
+    THIS
+    HAS
+    THAT
+    A
+
+
+#### cut and sort
+
+    # cut first field from file delimited by ":" and sort the result
+    :~/tmp$ cut -d : -f 1 /etc/passwd | sort
+    _apt
+    avahi
+    avahi-autoipd
+    backup
+    [...]
+    :~/tmp$ cut -b 1-10 /etc/passwd # cut first 10 bytes
+    root:x:0:0
+    daemon:x:1
+    [...]
+    # use natural sort order
+    :~/tmp$ sudo du -hd1 | sort -h
+
+#### ed
+
+- line editor, mostly used in scripts to make programmatic changes
+- I will not bother with this unless I desperately need it
+
+### Package management
+
+#### Basics
+
 
 
 
