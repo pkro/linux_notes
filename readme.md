@@ -1023,8 +1023,7 @@ Operations on whole lines:
     line 3
     :~/tmp$
 
-- Operations replacing content of lines
-
+Operations replacing content of lines
 
     :~/tmp$ sed "s/[Ll]ine/Row/" mytext
     Row 1
@@ -1046,8 +1045,8 @@ Operations on whole lines:
 - pronounced "awk" as in "hawk"
 - language to manipulate text
 - extract and transform text
-- examples:
 
+Examples:
 
     # -e enables interpretation of backslashes, but rather use printf
     :~/tmp$ echo -e "This text file\nhas a few lines\nthat take upp\na little bit of space" > myfile
