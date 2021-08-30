@@ -979,9 +979,8 @@ Nothing new here
 
 - commonly used in command pipelines and scripts
 - parameters are defined in the parameter string at the beginning
-- Operations on whole lines: 
 
-
+Operations on whole lines: 
 
     :~/tmp$ for ((i=1; i<=3; i++)); do echo "line ${i}"; done > mytext
     :~/tmp$ cat mytext 
