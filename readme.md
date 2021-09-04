@@ -1428,8 +1428,8 @@ Install remmina (remote desktop client) on the workstation (NOT the server) to a
   - `d` - delete partitions
 - After creating a partition, create a file system (e.g. ext4) using `sudo mkfs.ext4 /dev/sdc1`
 - Or just use gparted
-- Mount a disk:
 
+Mount a disk:
 
     # create mount point directory
     sudo mkdir /mnt/storage
