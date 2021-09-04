@@ -959,6 +959,8 @@ Just do the included `vimtutor` command for the very basics.
 Mostly self explanatory easy simple editor.
 
 `^` = `ctrl`
+`M` = `alt`
+`alt-entf` = delete current line
 
 #### grep
 
@@ -1106,19 +1108,651 @@ Examples:
 - Debian, Ubuntu, mint etc: APT (front end for dpkg)
 - CentOS, Red Hat: Yum (front end for rpm)
 - `sudo apt update` to refresh list of packages
+- `sudo apt upgrade` to update installed packages
 - `sudo apt list [searchterm]`, `sudo apt show [package]`, `sudo apt search [search term incl. descriptions]` 
 - `sudo apt install [package]`
+- `apt` is the userfriendly version of `apt-get`
+
+#### aptitude (Debian, ubuntu...)
+
+Menu based terminal front end for software installation and related; supports mouse input where available. Can be 
+installed with `apt`. Resolver figures out dependency issues.
+
+![aptitude](readme_images/aptitude.png)
+
+#### dpkg (all debian based distros)
+
+- base for the frontends
+- no dependency resolution
+- `dpkg --info package.deb`
+- `dpkg -i package.deb` to install,
+- `dpkg -r package.deb` to remove.
+- `dpkg -P package.deb` to purge config files for the software
+- `dpkg -contents package.deb` to view files in the package
+- `dpkg -L package.deb` to list files installed from the package
+- `dpkg -S [file]` to show which package installed a file
+
+#### yum / DNF (frontends for RPM)
+
+Useful commands (both for yum/dnf, using yum here): `yum search`, `yum info`, `yum list available`, `yum install`, 
+`yum remove`, `yum update`
+
+#### RPM (Red hat and related)
+
+- base for the frontends
+
+#### Creating packages
+
+    :~/tmp$ mkdir -p myapp_1.0/DEBIAN
+    :~/tmp$ nano myapp_1.0/DEBIAN/control
+    :~/tmp$ cat myapp_1.0/DEBIAN/control
+    `Package: myapp
+    Version: 1.0
+    Maintainer: pkro <pkro@example.com>
+    Architecture: all
+    Description: blah`
+    :~/tmp$ mkdir -p myapp_1.0/usr/bin # where it should be installed on the user machine
+    :~/tmp$ nano myapp_1.0/usr/bin/myapp
+    :~/tmp$ cat myapp_1.0/usr/bin/myapp
+    `#!/usr/bin/bash
+    echo "This is my great new app"`
+    :~/tmp$ sudo chown -R root:root myapp_1.0/
+    :~/tmp$ sudo chmod -R 755 myapp_1.0/usr/
+    :~/tmp$ sudo chmod -R 644 myapp_1.0/DEBIAN/control
+    :~/tmp$ dpkg-deb --build myapp_1.0
+    dpkg-deb: building package 'myapp' in 'myapp_1.0.deb'.
+    :~/tmp$ ls -l *.deb
+    -rw-r--r-- 1 pk pk 744 Aug 31 08:45 myapp_1.0.deb
+
+#### Adding third party repos with APT
+
+3rd party repos are kept in `/etc/apt/sources.list` and as individual files in `/etc/apt/sources.list.d`. A repo is 
+either in one or the other, not both (it seems).    
+
+Useful for checking 3rd party repos before a distro upgrade.
+
+Otherwise, just follow the maintainers instructions.
+
+#### Hosting a local repository
+
+Repo types: 
+- binary vs source repositories, 
+- trivial (bare minimum) vs official (all features supported)
+
+A repository contains
+- `.deb` files (packages in architecture-specific directories)
+- `Packages` file (checksums / metadata for included packages)
+- `Release` file (checksum of packages file)
+- `Release.gpg` (signature of release file)
+- `InRelease` file (inline signed copy of Release file)
+
+Creating a simple repository by hand:
+
+Install `sudo apt install dpkg-dev`.
+
+Create the following folder structure and put the .deb package in the appropriate folder (this is the package we 
+created in "creating packages"): 
+
+    myrepo/
+    ├── all
+    │   └── myapp_1.0.deb
+    ├── Packages
+    └── Release
+
+We created this folder structure under `/srv`, so all the following commands are done by root (switch to root 
+account with `sudo -s`).
+
+    root@pk-lightshow:/srv/myrepo# apt-ftparchive packages . > Packages
+    root@pk-lightshow:/srv/myrepo# apt-ftparchive release . > Release
+    # check if keys already exit
+    root@pk-lightshow:/srv/myrepo# gpg --list-keys
+    # if not, create
+    root@pk-lightshow:/srv/myrepo# gpg --gen-key
+    root@pk-lightshow:/srv/myrepo# gpg --armor --output Release.gpg --detach-sign Release
+    root@pk-lightshow:/srv/myrepo# gpg --clearsign --output InRelease Release
+    root@pk-lightshow:/srv/myrepo# gpg --output mykey.gpg --armor --export
+
+Folder should now look like this:
+
+    myrepo/
+    ├── all
+    │   └── myapp_1.0.deb
+    ├── InRelease
+    ├── mykey.gpg
+    ├── Packages
+    ├── Release
+    └── Release.gpg
+
+Switch back to the normal user (`su pk`).
+
+    pk@pk-lightshow:~$ cp /srv/myrepo/mykey.gpg .
+    pk@pk-lightshow:~$ sudo apt-key add mykey.gpg
+    # add "deb file:/srv/myrepo /" to sources.list
+    pk@pk-lightshow:~$ sudo nano /etc/apt/sources.list
+    pk@pk-lightshow:~$ sudo apt update
+    Get:1 file:/srv/myrepo  InRelease [1.524 B]
+    Get:1 file:/srv/myrepo  InRelease [1.524 B]
+    Hit:2 http://archive.ubuntu.com/ubuntu focal InRelease
+    [...]
+    pk@pk-lightshow:~$ apt show myapp
+    Package: myapp
+    Version: 1.0
+    Maintainer: pkro <pkro@example.com>
+    [...]
+    pk@pk-lightshow:~$ sudo apt install myapp
+    [...]
+    pk@pk-lightshow:~$ myapp
+    This is my great new app
+
+#### Creating a network APT repository
+
+- host packages for remote clients
+- needs a static IP
+- setup nearly identical to local repo
+
+TODO: go through server course until apache is set up, zip the repo made here and scp it to the pi, continue from there
+
+### Working remotely
+
+### Process management
+
+### Security
+
+#### Firewall basics
+
+- Filters network traffic
+- Often runs on a local host
+- hardware firewalls are just dedicated machines running firewall software
+- compares network packets to lists of rules (source/dest address, port etc.)
+- most of the time only act on incoming traffic
+- two ways to block traffic
+  - drop (ignores incoming traffic)
+  - reject (notifies the sender of the rejections)
+- can be configured to forward / route traffic to another system
+- Common firewall packages: iptables / netfilter (Linux) and pf (BSD)
+
+#### iptables
+
+- Packet filter that uses Linux' netfilter to process traffic
+- iptables rules are organized into chains: INPUT, OUTPUT and FORWARD (self explanatory)
+- packets are matched against rules in the appropriate chains sequentially and applies the defined action if it 
+  matches (ACCEPT, DROP etc.); otherwise, the default action is taken
+- list rules with `sudo iptables -L`
+
+To edit rules permanently, they must be exported (`sudo iptables-save > my_iptables_rules`), edited and re-imported 
+(`sudo iptables-restore > my_iptables_rules`). 
+The rule list must end with `COMMIT`, so don't just append rules to the end of the file programmatically.
+
+#### UFW (uncomplicated firewall)
+
+- Front end for netfilter packet filtering software
+- show ports / sockets the system is listening on: `sudo ss -anpst` (not directly ufw related)
+- front end for iptables that removes the need for cryptic rulesets
+- **changes the default iptables policy from ACCEPT to DROP**, so be sure to enable the relevant remote ports such 
+  as 22 for ssh when enabling the firewall on a remote machine!
+- `sudo ufw enable` adds ufw rules to the existing ones in iptables, 
+- `sudo ufw disable` removes them
+- `sudo ufw status` shows current rules and if ufw is active
+- Examples for setting rules: `sudo ufw allow 443`, `sudo ufw allow 443/tcp`, `sudo ufw allow ssh` 
+- Examples for disabling rules: `sudo ufw delete allow 443`, `sudo ufw delete allow ssh` 
+- to delete a rule by number, use `sudo ufw status numbered` and delete it with `sudo ufw delete [nr]`
+- logs in  `/var/log/ufw.log` (logging must be enabled)
+
+
+Good overview of commands [here](https://www.linode.com/docs/guides/configure-firewall-with-ufw/)
+
+
+### System administration
+
+### Exploration
+
+
+## Building an Ubuntu server notes
+
+Random notes from the course of the same name on linkedin learning
+
+Useful stuff:
+
+- Copy a file from local to remote: `scp somefile pk@192.168.178.25:Desktop`
+  - openssh-server must be installed and active (check with `sudo systemctl status ssh`)
+  - If you're in a ssh session, the local server is the one you're ssh'd in of course
+- `nmap -Pn [host]` to scan a host blocking ping
+
+### Explore hardware
+
+- `sudo lshw` - exhaustive hardware information
+- `sudo lshw -html > hardware.html` - export to html
+- `scp hardware.html pk@192.168.178.25:Desktop`
+- `lsblk` for storage devices overview
+- `blkid` for detailed block devices overview
+- `lsmem` for memory (ram) overview
+- `lscpu` CPU stuff (same as `cat /proc/cpuinfo`
+- `lspci` / `lsusb`
+- `lsb_release -a` for linux release information
+- `uname -a` for kernel / release info
+- `hostnamectl` to see (and set) the hostname 
+
+### apt
+
+- manage automatic upgrades with `dpkg-reconfigure unattended-upgrades`
+- only one instance of apt can run, so no software installation / upgrade while the auto updater is running
+- `do-release-upgrade` does what it says, moving from a LTS release to the next LTS release
+- change to `Prompt=normal` in `/etc/update-manager/release-upgrades`to upgrade to a non-LTS release (not recommended)
+- *use tmux or screen for release upgrades when connected to a remote machine!*
+
+### snaps
+
+- snaps are self contained loop file systems (similar do docker or wine) that provide whatever libraries etc. the snap 
+  needs to run.
+- snap installed programs are updated automatically
+- command: `snap`, see `snap --help` for more
+- installed snap programs are in the path
+
+### System logs
+
+- Text logs
+  - stored in `/var/log`; noteworthy logs:
+    - `syslog`
+  - managed by `rsyslog`
+- Binary logs
+  - accessed through `journalctl`
+  - managed by systemd-journald
+  - easy to query:
+    - show only specific lines with `journalctl -u [searchstring]`
+    - show errors since last boot: `journalctl -b --priority=3` 
+
+### Process management
+
+Software runs in processes referred to by a process ID (PID)
+
+- `ps` processes in current shell session
+- `ps -e` all processes on system
+- `ps -ef` includes users the processes are running as
+- `ps aux` even more information such as cpu and memory consumed by processes
+- `ps -ejHF` process tree view (which process started which other processes, starting from pid 1 = `/sbin/init`) 
+
+Processes are communicated with using signals (=messages). List all signals with `kill -l`. Commonly used signal: 
+`kill -9 [processID]` to kill a process.
+
+
+### Ressource management (processor, memory, storage, heap etc.)
+
+- `top` or `htop` (more fancy) to show processes and ressource utilization
+  - use arrows to go through processes, see help bar to see common actions (kill etc)
+  - Load average: 
+    - `[# processors fully utilized (average) in the last minute] [last 5 minutes] [last 15 minutes]`
+    - 1.0 = One processor (core) is fully utilized
+    - In a system with 12 cores, a 12.0 would indicate that the processor load is exactly "right" (fully utilized and 
+      can do everything in time), anything more means some processes have to wait for execution
+- `free` shows memory / swap
+- `df` shows file system information, `df -h /` shows only info for `/`
+- find large files with `sudo find / -size +500M`
+- `nice` to set process' priority (rarely needed)
+
+### Service management
+
+- provide funcionatlity to users (apache, db, ssh etc)
+- "wrappers" around processes, communication over systemd
+- respond to requests
+- controlled / viewed by `systemctl` (ubuntu)
+- `systemctl status syslog.service` / `systemctl -u syslog.service` for specific service information
+- `systemctl [start|stop|restart|enable|disable] [servicename]` (self explanatory)
+
+### Planning for power interruptions
+
+- UPS can communicate with the server to inform it about power outages to give it time for a controlled shutdown; 
+  configuration is vendor dependent
+
+### Installing a desktop environment and remote desktop
+
+    pk@pi:~$ sudo apt install ubuntu-desktop
+    # install remote desktop server
+    pk@pi:~$ sud o apt install xrdp
+    # add xrdp user to ssl-cert group to access the certs
+    pk@pi:~$ sudo usermod -aG ssl-cert xrdp
+    # allow port for desktop remote
+    pk@pi:~$ sudo ufw allow 3389
+    pk@pi:~$ sudo nano /etc/xrdp/startwm.sh
+    # add the following lines before "test -x [...]" at the bottom of the file
+    # otherwise you might have a black screen
+    unset DBUS_SESSION_BUS_ADDRESS
+    unset XDG_RUNTIME_DIR
+
+Install remmina (remote desktop client) on the workstation (NOT the server) to access it.
+
+### Adding a disk
+
+- to identify devices to disk models: `sudo lshw -businfo -c disk`
+- start fdisk with e.g. `sudo fdisk /dev/sdc`; in-program commands:
+  - `p` - show partitions
+  - `d` - delete partitions
+- After creating a partition, create a file system (e.g. ext4) using `sudo mkfs.ext4 /dev/sdc1`
+- Or just use gparted
+- Mount a disk:
+
+
+    # create mount point directory
+    sudo mkdir /mnt/storage
+    # mount
+    sudo mount /dev/sdc1 /mnt/storage
+    sudo chmod 777 /mnt/storage
+
+### Exploring redundant storage
+
+- redundancy is not a backup
+- RAID
+  - mirrored or striped volumes and supports parity
+  - Level 0 = JBOD (just a bunch of disks), no redundancy
+  - Level 1 = mirroring
+  - Level 5 = striped over 3 or more disks, stands loss of 1 disk
+  - Level 6 = 4 or more disks, can stand loss of 2 disks (recommended)
+  - managed through `mdadm`
+- LVM
+  - logical volume manager
+  - creates and manages flexible volumes
+  - Terminology: PV = physical volume, VG = volume group (containing PVs), LV = logical volumes within VGs that 
+    represent user-facing volumes where file systems are created.
+  - LVs can be moved between PVs and VGs (moved between the actual hardware disks)
+  - does not have to, but can provide redundancy
+  - more complex setup than RAID
+- ZFS
+  - both file system and volume manager
+  - uses Vdevs made up of disks to create pools, where file systems and block devices can be created
+  - file systems and block devices can be moved to other pools on different hardware
+  - uses copy-on-write (COW), making it easy to create snapshots
+- BTRFS
+  - b-tree file system
+  - manages file integrity and some raid features
+  - resilient against data corruption
+  - can be used on a single disk
+
+### Creating encrypted storage
+
+Create with `cryptsetup` and `LUKS` (Linux unified key setup)
+
+Create and mount:
+
+    pk@pi:~$ sudo luksformat -t ext4 /dev/sda1
+    # open locks volume -> maps the encryped volume sda1 to the 
+    # securefiles entry in the /dev/mapper directory
+    pk@pi:~$ sudo cryptsetup open /dev/sda1 securefiles
+    pk@pi:~$ ls /dev/mapper/
+    control  securefiles
+    pk@pi:~$ sudo mkdir /mnt/securestorage
+    # the actual mounting
+    pk@pi:~$ sudo mount /dev/mapper/securefiles /mnt/securestorage
+    # can't this be done before mounting?
+    pk@pi:~$ sudo chmod 777 /mnt/securestorage/
+
+Mount:
+
+    pk@pi:~$ sudo cryptsetup open /dev/sda1 securefiles
+    pk@pi:~$ sudo mount /dev/mapper/securefiles /mnt/securestorage
+
+
+Unmount:
+
+    `pk@pi:~$ sudo umount /mnt/securestorage`
+    pk@pi:~$ sudo cryptsetup close securefiles
+
+### Automatically mount disks
+
+Settings for mounting disks are in the file system table at `/etc/fstab`.
+
+Example for (optionally) mounting an usb drive at start:
+- check label / uuid of storage to mount with `blkid`
+- add to fstab: `UUID="c1838bed-42e3-4337-91b5-3ee253b3419e" /mnt/storage ext4 defaults,nofail 0 2`
+  - UUID is the label we just found with `blkid` 
+  - `defaults` are common options, `nofail` so the system doesn't wait for storage that might not be attached such 
+    as USB drives
+  - `0 2` first 0 is not used anymore, 2 (check filesystem after those with "1"; 0 = don't check)
+  - don't forget to create the mount directory (here: `/mnt/storage`) and set the access rights as desired
+
+
+### Monitoring storage
+
+- `iotop` to see disk reads/writes/swap/io by process 
+- `iostat` (`sysstat` package)
+- `df -h` to see size / used storage per device (filesystem)
+- `hdparm` to get information on HDs, set parameters (standby, power management) and check speed  
+
+### Network configuration with Netplan
+
+In linux mint, systemd-networkd seems not to be running by default so the below applies to ubuntu server for now.
+
+- uses YAML files to describe network interfaces 
+- configurations are "rendered" by `systemd-networkd` or `NetworkManager`
+- `networkctl` (and `networkctl status [interface IDx or link name]`) for network information.
+- network configurations under in `/run/systemd/network`
+- network yaml under `/etc/netplan/50-cloud-init.yaml` (for the preinstalled cloud optimized ubuntu server image), 
+  otherwise `00-installer-config.yaml` created by the installer
+- to add new network devices, check their "LINK" name with `networkctl` and add them under `/etc/netplan`, e.g. 
+  `/etc/netplan/01-usbadapter.yaml`. They can be put into the installer or cloud-init configs too, but it it's 
+  cleaner to put them into their own configuration as they were not present at install or cloud init time.
+
+Example yaml for adding wifi to the ubuntu cloud image installation:
+
+    pk@pi:/etc/netplan$ cat 01-wifi.yaml 
+    network:
+        version: 2
+        renderer: networkd
+        wifis:
+            `wlan0:
+                optional: true
+                access-points:
+                    "pwic":
+                        password: "some password"
+                dhcp4: true`
+
+- When changes are done, run `sudo netplan apply`
+- To set a static IP, gateway and nameservers instead of DHCP, use (example):
+
+
+    network:
+        version: 2
+        renderer: networkd
+        wifis:
+            wlan0:
+                [...]
+                addresses:
+                    - 10.0.1.123/24
+                gateway4: 10.0.1.1
+                nameservers:
+                  addresses: [10.0.1.1, 4.4.4.4]
+
+
+### Firewall andministration with `uwf` (uncomplicated firewall)
+
+- see [UFW section above](#ufw-uncomplicated-firewall)
+
+### Monitoring network activity
+
+- `iftop` (install if not installed): top-like viewer for network traffic.
+  - uses the first network device found, use `iftop -i [device]` to specify device, e.g. `sudo iftop -i wlan0`
+  - `h` to toggle help
+- `jnettop` - alternative to iftop
+
+### Configuring a ssh server
+
+- short for Secure SHell
+- `openssh-server` is configured in `/etc/ssh/ssh_config`: there, key based authentication (instead of password 
+  authentication) can be set up besides other options
+- with ssh access, files can be transfered with `cp` without additional setup, e.g. `scp pk@pk-lightshow:Desktop/myfile 
+  ~/` to copy myfile from the remote Desktop to the local desktop. Local means the machine where the current shell 
+  is running, so if you're ssh'd in a machine, that machine is the local one.
+- ssh also provides SFTP out of the box to use with e.g. filezilla or on command line
+  - use filezilla or, on the command line, use `sftp user@server` and type `?` to see possible commands. `bye` to quit.
+- SSH tunnels can be used to make traffic from the client appear to come from the server. Useful for accessing 
+  services like databases on the host that are only accessible from the host with a client program.
+
+#### Using a key instead of password authentication
+
+- one or many keys
+  - one key for each computer: more setup, more resilient
+  - one key for all computers: less setup, single point of failure
+
+Generating and distributing a key:
+
+    pk@pk-lightshow:~$ ssh-keygen -t rsa
+    Generating public/private rsa key pair.
+    # can't use ~/.ssh/pi_key here, full path has to be entered
+    Enter file in which to save the key (/home/pk/.ssh/id_rsa): /home/pk/.ssh/pi_key
+    Enter passphrase (empty for no passphrase):
+    Enter same passphrase again:
+    Your identification has been saved in /home/pk/.ssh/pi_key
+    Your public key has been saved in /home/pk/.ssh/pi_key.pub
+    [...]
+    # copy key to the remote server
+    pk@pk-lightshow:~/.ssh$ ssh-copy-id pk@pi
+    # OR
+    scp .ssh/pi_key.pub pk@pi:
+    [ssh to remote]
+    mkdir .ssh
+    cat pi_key >> .ssh/authorized_keys
+
+Log into the server using the key:
+    
+    # you might have to enter the key passphrase
+    # or add it to the keychain
+    ssh -i ~/.ssh/pi_key pk@pi
+
+Create config file to make connecting easier:
+
+    pk@pk-lightshow:~$ vi .ssh/config
+    pk@pk-lightshow:~$ cat .ssh/config 
+    Host pi
+        User pk
+        HostName pi
+        IdentityFile ~/.ssh/pi_key
+    # Now only ssh pi (the shortcut after "Host") is needed to login
+    ssh pi
+        
+To create a keypair in windows, use `puttygen` from the putty page and copy the public key to the server.
+
+#### Creating a ssh tunnel
+
+Example to access an application on port 3306 on the *server* (pi) using port 9000 on the *local* machine 
+(pk-lightshow): `pk@pk-lightshow:~/$ ssh -L 9000:localhost:3306 pk@pi`. Now the service on port 3306 on `pi` can be 
+accessed using localhost:9000 on the local machine.
+
+### Sharing files with Samba
+
+- SMB (Server Message Block), aka CIFS (common internet file system)
+- cross platform file sharing providing clients access to local files
+- Install with `sudo apt install samba`
+- configured in `/etc/samba/smb.conf`
+
+Create a new fileshare by adding an entry to the bottom of smb.conf:
+
+    pk@pi:~$ sudo vi /etc/samba/smb.conf
+    pk@pi:~$ tail -n 7 /etc/samba/smb.conf 
+    [storage]
+       comment = Shared Storage
+       path = /mnt/storage
+       read only = no
+       valid users = storageuser, pk
+    # verify
+    pk@pi:~$ testparm
+    # create samba user
+    pk@pi:~$ sudo useradd storageuser
+    pk@pi:~$ sudo smbpasswd -a storageuser
+    # open port 139/tcp to allow samba traffic for linux clients
+    pk@pi:~$ sudo ufw allow 139/tcp
+    # ... and for windows clients
+    pk@pi:~$ sudo ufw allow 445/tcp
+    # restart 
+    pk@pi:~$ sudo systemctl restart smbd
+
+The share can now be connected to by looking in network for the hostname or entering the host ip + share name, such 
+as \\192.168.178.29\storage.
+
+![connecting to smb](readme_images/smb.png)
+
+Everybody using these credentials will be able to create, modify and delete files as they're all owned by `storageuser`.
+
+Be sure to set the read / write permissions on the shared folder on the host (read/write for other users).
+
+### Web hosting with Apache
+
+    pk@pi:/mnt/storage$ sudo apt install apache2
+    pk@pi:/mnt/storage$ sudo ufw allow 80/tcp
+    pk@pi:/mnt/storage$ cd /var/www/html
+    pk@pi:/var/www/html$ vi index.html
+    pk@pi:/var/www/html$ sudo chown -R www-data:www-data /var/www/html
+
+- Configure apache in `/etc/apache2/apache2.conf`
+- Add sites in `/etc/apache2/sites_available`
+  - default site on port 80 is defined in `000-default.conf`
+  - enable / disable individual sites use `a2ensite` and `a2dissite` commands (see man pages)
+- install modules such as php (`libapache2-mod-php`) using `apt`
+- see status with `systemctl status apache2` 
+- restart etc. with `sudo systemctl [start|stop|restart|enable|disable] apache2`
+
+### Web hosting with NGINX
+
+First, disable apache2 with `sudo systemctl stop apache2; sudo systemclt disable apache2` if is still enabled.
+
+- Package: `nginx`
+- Configuration: `/etc/nginx/nginx.conf`
+- site configuration in `/etc/nginx/sites-available/`
+- to enable a site, soft-link it to `/etc/nginx/sites-enabled`
+- restart similar to apache with `sudo systemctl restart nginx`
+
+### Hosting a database with MariaDB
+
+    pk@pi:~$ sudo apt-get install mariadb-server
+    # harden installation, follow 
+    pk@pi:~$ sudo mysql_secure_installation
+    pk@pi:~$ sudo mariadb
+    # create a non-root user with access to all databases (don't do this in a live environment)
+    MariaDB [(none)]> create user 'pk'@'localhost' identified by 'somepassword'
+    MariaDB [mysql]> grant all privileges on *.* to 'pk'@'localhost';
+    
+    # Optionally tunnel the server mariadb port (3306) to the local system's port 9099
+    # this is on the LOCAL machine now!
+    pk@pk-lightshow:~$ ssh -L 9099:localhost:3306 pk@pi
+
+Alternatively (and probably even better as it can use random free ports), create the ssh tunnel in the database 
+client as the one in intellij:
+
+![ssh tunnel configuration in intellij](readme_images/mariadbsshtunnel1.png)
+![ssh tunnel configuration in intellij2](readme_images/mariadbsshtunnel2.png)
+
+### Monitoring a server with cockpit
+
+AMAZING tool that allows server to be monitored and administered remotely in a webbrowser.
+
+Doesn't eat any ressources while not in use (systemd socket activation).
+
+Also has a lot of plugins that can be installed directly in the cockpit interface.
+
+Installation:
+
+    pk@pi:~$ sudo apt install cockpit
+    # if used only on the localhost, this is not necessary
+    pk@pi:~$ sudo ufw allow 9090
+
+![Cockpit GUI](readme_images/cockpit.png)
+
 
 
 ## Not course related
 
+### Multiple commands in one line
 
+- `command1; command2` runs command1, then command2
+- `command1 && command2` runs command1, then command2 *if command1 ran succesfully*
+- `command1 || command2` runs command1, then command2 *if command1 failed*
+- `command1 && commandIfSuccess || commandIfFailed` works just like a ternary operator
 
 ### adding commands to bash using .bashrc
+
 To not clutter the .bashrc and for easier backup, create new commands in a separate file (e.g. .bash_own_functions.sh) and include them somewhere in the .bashrc (source ~/.bash_own_functions.sh).
 
 ### cheat.sh
+
 Very useful to quickly look up the most common use cases of a command.  
+
 Usage:  
 
     curl cheat.sh/commandname
@@ -1164,25 +1798,65 @@ Or, using xargs again and dirname command:
     cd `locate --limit 1 DOOM2.WAD | xargs dirname`
 
 
-#### Background tasks with nohup / screen
+#### Background tasks with nohup / screen / tmux
 
 ##### nohup
 
 Lets a process run in the background (you can log out from the terminal / server and it keeps running); Command output is by default to nohup.log in the current directory. Installed by default on most systems.
     nohup <command>
 
-##### screen
-Creates multiple (and optionally named) terminals; Usually must be installed first.  
+##### screen (terminal multiplexer)
+
+Creates multiple (and optionally named) terminals; Usually must be installed first.
+
+Useful for ssh connections so interruptions of the connection don't cause a shell abort of running scripts on the 
+server / remote.
+
 Usage:
     screen
 Keys:
-Ctrl+key commandkey (press ctrl and key simultaneously, then release and press command key)  
+Ctrl+key commandkey (press ctrl and key simultaneously, then release and press command key, as in emacs)
+
 - Ctrl+a c -> create a new window / shell
 - Ctrl+a " -> list active screens and select with cursor + enter
 - Ctrl+a A -> rename current screen
 - Ctrl+a d -> detach from screen session (shells and processes in shells will continue running, you could log out now)
 - screen -r -> resumes a detached screen session
 - screen -ls -> find active screen session(s), reattach to a specific one with screen -r <number at front of session name before .pts[...]>
+
+##### tmux (terminal multiplexer)
+
+Does the same thing as screen
+
+- run `tmux` on remote machine
+- when the connection fails, connect again and run `tmux attach` to reconnect to the running session.
+
+From cheat.sh:
+
+    # Start a new session:
+    tmux
+    
+    # Start a new named session:
+    tmux new -s name
+    
+    # List existing sessions:
+    tmux ls
+    
+    # Attach to the most recently used session:
+    tmux attach
+    
+    # Detach from the current session (inside a tmux session):
+    Ctrl-B d
+    
+    # Create a new window (inside a tmux session):
+    Ctrl-B c
+    
+    # Switch between sessions and windows (inside a tmux session):
+    Ctrl-B w
+    
+    # Kill a session by name:
+    tmux kill-session -t name
+
 
 
 #### Give a specified group make a directory access to a folder
