@@ -1,6 +1,8 @@
 # Linux notes
 
-Linux notes and a lose follow-along of linux tips weekly on linkedin learning by Scott Simpson
+Linux notes and a loose follow-along of linux tips weekly on linkedin learning by Scott Simpson
+
+The `pi` host that is referred throughout here is defined with it's IP address in `/etc/hosts`.
 
 ## Follow along of linux tips weekly
 
@@ -1249,10 +1251,130 @@ Switch back to the normal user (`su pk`).
 - host packages for remote clients
 - needs a static IP
 - setup nearly identical to local repo
+- this assumes that apache2 is running and serves from the default folder.
 
-TODO: go through server course until apache is set up, zip the repo made here and scp it to the pi, continue from there
+Create a repo on the remote (ssh'd in):
+
+    pk@pi:~$ sudo -s # avoid sudo'ing everything
+    root@pi:/home/pk# mkdir /var/www/html/repo
+    root@pi:/home/pk# cd /var/www/html/repo
+    root@pi:/var/www/html/repo# mkdir all # for all architectures
+    # copy repo from local machine to the pi
+    root@pi:/var/www/html/repo# scp pk@pk-lightshow:tmp/myapp_1.0.deb ./repo/
+    root@pi:/var/www/html/repo# apt-ftparchive packages . > Packages
+    root@pi:/var/www/html/repo# apt-ftparchive release . > Release
+    # create a key first if it doesn't exist on the server, see previous section
+    root@pi:/var/www/html/repo# gpg --armor --output Release.gpg --detach-sign Release
+    root@pi:/var/www/html/repo# gpg --clearsign --output InRelease Release
+    root@pi:/var/www/html/repo# gpg --output mykey.gpg --armor --export
+
+On the local system (the one that should use the newly created repo on the remote):
+
+    pk@pk-lightshow:~$ wget http://pi/repo/mykey.gpg
+    pk@pk-lightshow:~$ sudo apt-key add mykey.gpg
+    # touch just to indicate here that it's not an existing file
+    # could also be done in the /etc/apt/sources.list file, but this is easier to delete
+    pk@pk-lightshow:~$ sudo touch /etc/apt/sources.list.d/my-repository.list && sudo vi /etc/apt/sources.list.d/my-repository.list
+    pk@pk-lightshow:~$ cat /etc/apt/sources.list.d/my-repository.list
+    deb http://pi/repo /
+    pk@pk-lightshow:~$ sudo apt update
+    # I receive an error about the key here and the fix doesn't work
+
+
+
 
 ### Working remotely
+
+#### curl and wget
+
+- curl: can send and receive information using many protocols
+  - sends content to stdout per default
+  - save to file with `curl [url] -o [filename]` or `-O` to use the filename from the URL
+- wget: fault-tolerant, noninteractive downloader
+  - `wget [url] -c` to resume an interrupted download  
+
+
+
+#### Browsing through a SOCKS proxy server
+
+- SOCKS (SOcket Secure) proxy
+  - forwards traffic from client through proxy server
+  - can control web access and allow web access from restricted networks
+
+![SOCKS proxy](readme_images/socksproxy.png)
+
+Set up on local machine to use ssh on the remote (pi): `ssh -D [port] [ssh server] -Nq`, e.g. `ssh -D 4321 pk@pi 
+-Nq`. Other options: `-f` to fork process into background, `-C` to compress data sent through tunnel.  
+= don't open shell, q = quiet mode. Then configure the browser to use the proxy for traffic: 
+
+![SOCKS proxy browser config](readme_images/socks_browserconfig.png)
+
+#### X11 forwarding
+
+- NOT a remote desktop like rdp
+- Feature of ssh.
+- X.Org window server draws the GUI on the display
+- can also draw a remote app's GUI locally
+
+
+      # Start an X11 forwarding ssh connection 
+      pk@pk-lightshow:~/Downloads$ ssh -X pk@pi
+      # start firefox on remote machine
+      pk@pi:~$ firefox
+
+This starts the GUI part on the local machine (pk-lightshow). Firefox itself runs on the remote (pi).
+
+![X11 forwarded firefox example](readme_images/x11firefox.png)
+
+#### Using a Squid proxy
+
+- allows consolidation of network traffic through one host
+- offers ability to filter traffic (sites, ports etc.)
+- offers authentication services
+- can cache assets (except https traffic, so kind of useless today)
+- makes requests on behalf of clients: does not route packets
+- package: `squid`
+- configuration in `/etc/squid/squid.conf`;
+- uses port 3128 per default, so be sure to open it on the server (`sudo ufw allow 3128`) and set it in the browser 
+  with that port; the rest is the same as setting up a SQUID proxy.
+- squid traffic can be seen in `/var/log/squid/access.log`
+
+Example changes to allow external clients to use the proxy and block some sites:
+
+    # in acl section
+    # allow 10.0.2.0 to access proxy; localnet is an arbitrary name
+    acl localnet src 10.0.2.0/24
+    # block a site
+    acl badsites dstdomain .example.com
+    # in access section
+    # these are evaluated in order
+    http_access deny badsites
+    http_access allow localnet
+
+#### Using mosh (MObile SHell)
+
+- shell that provides fault-tolerant connection to remote system
+- reduces bandwidth
+- uses udp
+- detects disconnections and automatically reconnects
+- uses ssh to set up connection (but uses it's own protocol afterwards)
+- combine with `screen` or `tmux` for enhanced resilience
+
+Setup on remote server:
+
+    pk@pi:~$ sudo apt install mosh
+    # alternatively, only one port could be configured
+    pk@pi:~$ sudo ufw allow 60000:61000/udp
+
+On local machine:
+    
+    pk@pk-lightshow:~/Downloads$ sudo apt install mosh
+    # connect to server
+    pk@pk-lightshow:~/Downloads$ mosh pk@pi
+    # ...and get probably some locale errors that can be googled and fixe,
+    # which i will not do here
+
+
 
 ### Process management
 
@@ -1313,7 +1435,8 @@ Random notes from the course of the same name on linkedin learning
 
 Useful stuff:
 
-- Copy a file from local to remote: `scp somefile pk@192.168.178.25:Desktop`
+- Copy a file from local to remote (pk's Desktop folder): `scp somefile pk@192.168.178.25:Desktop`
+  - Syntax: `scp [source] [destination]` 
   - openssh-server must be installed and active (check with `sudo systemctl status ssh`)
   - If you're in a ssh session, the local server is the one you're ssh'd in of course
 - `nmap -Pn [host]` to scan a host blocking ping
@@ -1575,17 +1698,26 @@ Example yaml for adding wifi to the ubuntu cloud image installation:
 ### Configuring a ssh server
 
 - short for Secure SHell
+- package name is `openssh-server`
+- service name is `sshd`
+- default port is 22
 - `openssh-server` is configured in `/etc/ssh/ssh_config`: there, key based authentication (instead of password 
-  authentication) can be set up besides other options
+  authentication) can be set up besides other options, noteworthy ones are
+  - `Port`
+  - `PermitRootLogin` # yes|no|prohibit-password (default)
+  - `PubKeyAuthentication`
+  - `PasswordAuthentication` to make it keyfile-only
 - with ssh access, files can be transfered with `cp` without additional setup, e.g. `scp pk@pk-lightshow:Desktop/myfile 
   ~/` to copy myfile from the remote Desktop to the local desktop. Local means the machine where the current shell 
   is running, so if you're ssh'd in a machine, that machine is the local one.
-- ssh also provides SFTP out of the box to use with e.g. filezilla or on command line
+- ssh also provides SFTP (SSH File Transfer Protocol) out of the box to use with e.g. filezilla or on command line
+  - emulates ftp service over ssh
   - use filezilla or, on the command line, use `sftp user@server` and type `?` to see possible commands. `bye` to quit.
+  - common commands: pwd (display remote working directory), `ls`, `put` (upload a file), `get` (download a file)
 - SSH tunnels can be used to make traffic from the client appear to come from the server. Useful for accessing 
   services like databases on the host that are only accessible from the host with a client program.
 
-#### Using a key instead of password authentication
+#### Using a key pair instead of password authentication
 
 - one or many keys
   - one key for each computer: more setup, more resilient
@@ -1631,9 +1763,14 @@ To create a keypair in windows, use `puttygen` from the putty page and copy the 
 
 #### Creating a ssh tunnel
 
+![tunnel](readme_images/tunnel.png)
+
 Example to access an application on port 3306 on the *server* (pi) using port 9000 on the *local* machine 
 (pk-lightshow): `pk@pk-lightshow:~/$ ssh -L 9000:localhost:3306 pk@pi`. Now the service on port 3306 on `pi` can be 
 accessed using localhost:9000 on the local machine.
+
+Most DB browser apps have the options to set up a ssh tunnel included, just the openssh-server must be installed as 
+usual on the remote. 
 
 ### Sharing files with Samba
 
@@ -1767,8 +1904,9 @@ Or add it in the .bashrc / own functions file:
         curl cheat.sh/"$1"
     }
 
+### show only uncommented lines in a configuration file:
 
-
+`sed -e "/^#/d" /etc/squid/squid.conf | awk NF`
 
 ### commands
 
