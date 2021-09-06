@@ -1,6 +1,7 @@
 # Linux notes
 
-Linux notes and a loose follow-along of linux tips weekly on linkedin learning by Scott Simpson
+Linux notes and a loose follow-along of linux tips weekly on linkedin learning by Scott Simpson and other linux 
+related courses
 
 The `pi` host that is referred throughout here is defined with it's IP address in `/etc/hosts`.
 
@@ -1543,6 +1544,10 @@ Processes are communicated with using signals (=messages). List all signals with
 
 Install remmina (remote desktop client) on the workstation (NOT the server) to access it.
 
+- `systemctl set-default multi-user.target` to disable autostart of the desktop
+- `systemctl set-default graphical.target` to revert
+
+
 ### Adding a disk
 
 - to identify devices to disk models: `sudo lshw -businfo -c disk`
@@ -1837,9 +1842,17 @@ First, disable apache2 with `sudo systemctl stop apache2; sudo systemclt disable
 
 ### Hosting a database with MariaDB
 
+Noteworthy news (to me):
+
+- `mysql_secure_installation` secures a fresh mariadb/mysql install interactively
+- Server is now root administered by `sudo mysql` instead (or in addition to?) `mysql -u root -p`
+
+
+
     pk@pi:~$ sudo apt-get install mariadb-server
-    # harden installation, follow 
+    # harden / secure installation: 
     pk@pi:~$ sudo mysql_secure_installation
+    # this is how it's done now, no more "mysql -u root -p"
     pk@pi:~$ sudo mariadb
     # create a non-root user with access to all databases (don't do this in a live environment)
     MariaDB [(none)]> create user 'pk'@'localhost' identified by 'somepassword'
@@ -1871,7 +1884,62 @@ Installation:
 
 ![Cockpit GUI](readme_images/cockpit.png)
 
+### Virtualizaton with KVM/QEMU
 
+Doesn't really work well on Raspi
+
+### Containers with LXC / LXD
+
+Like docker; uses host kernel.
+
+Example of creating 2 alpine images:
+
+    pk@pi:~/Downloads$ sudo lxd init
+    pk@pi:~/Downloads$ sudo usermod -aG lxd pk
+    pk@pi:~$ lxc launch images:alpine/3.11
+    # and another
+    pk@pi:~$ lxc launch images:alpine/3.11
+    pk@pi:~$ lxc list
+    +------------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+    |       NAME       |  STATE  |         IPV4         |                     IPV6                      |   TYPE    | SNAPSHOTS |
+    +------------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+    | assuring-monarch | RUNNING | 10.64.158.220 (eth0) | fd42:4a67:3eb1:b39c:216:3eff:fe2f:1cd7 (eth0) | CONTAINER | 0         |
+    +------------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+    | driven-albacore  | RUNNING | 10.64.158.166 (eth0) | fd42:4a67:3eb1:b39c:216:3eff:fe71:9067 (eth0) | CONTAINER | 0         |
+    +------------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+    # exectute uptime command in container
+    pk@pi:~$ lxc exec assuring-monarch uptime
+    14:52:09 up 7 min,  load average: 0.16, 0.21, 0.11
+    # open a shell in the container
+    pk@pi:~$ lxc exec assuring-monarch /bin/ash
+    ~ # ls
+    ~ # exit
+    pk@pi:~$
+    pk@pi:~$ lxc stop assuring-monarch
+    pk@pi:~$ lxc stop driven-albacore
+    pk@pi:~$ lxc delete assuring-monarch
+    pk@pi:~$ lxc delete driven-albacore
+
+
+- `lxc file push [file] [container/path]` to copy files from host *into* the container
+- `lxc file pull [container/path] [filename]` to copy files *from* the container into host
+
+### Docker, Jellyfin, Nextcloud
+
+Skipped, easy enough setup and did docker ad nauseum
+
+### Your server and the internet
+
+- exposed services should be seured and their software kept updated
+- some services such as apache / nginx have small attack surfaces (just serve sites)
+- interactive services provide more attack oportunities
+- configure SSH to use keys and not accept passwords
+- Software like fail2ban can help reduce unwanted traffic (watches failed login attempts and bans addresses these 
+  come from)
+- ensure strong passwords for services requiring login (nextcloud, jellyfin, cockpit etc)
+- enable https for these so passwords aren't sent as clear text and ensure server identity
+- consider requiring a vpn to access services on the network from outside
+- never expose samba to the internet
 
 ## Not course related
 
