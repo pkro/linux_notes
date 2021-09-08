@@ -270,8 +270,10 @@ Redirectors:
 - `>` redirect output to a file (replace content if it exists)
 - `>>` redirect output and append to a file
 - `<` use file as input
-- `<<` take input until token: `wc << EOF` reads input until end of file (ctrl-D, or "EOF")
-
+- `<<` ("here document") take input until token: `wc << EOF` reads input until end of file (ctrl-D, or "EOF")
+      
+      
+      # EOF is an arbitrary string here
       pk@pk-lightshow:~$ wc << EOF
       > blab blubb
       > EOF
@@ -1281,8 +1283,64 @@ On the local system (the one that should use the newly created repo on the remot
     pk@pk-lightshow:~$ sudo apt update
     # I receive an error about the key here and the fix doesn't work
 
+#### Mirroring repositories
 
+`apt-mirror` (debian), `reposync` (redhat)
 
+#### Zypper
+
+The Suse linux package manager using RPM packages (?); similar use to apt.
+
+Noteworthy difference: zypper has "patterns", a metapackage / group of packages which, together, provide certain 
+capabilities and 
+features, e.g. the pattern "devel_web" would contain "Tools and libraries for Web application development." such as 
+a LAMPP stack, IDE etc.
+
+#### Using Flatpack
+
+- Sandbox on top of a runtime (KDE, GNOME, Freedesktop)
+- cross-distribution desktop apps
+- included in mint / software manager, otherwise
+  - `sudo apt install flatpack` to install package manager
+  - `flatpack remote-add flathub` to add the flathub repository
+- commands: `search`, `install [repo] [package in reverse domain notation]`, `list` (installed packages), `info`
+- run with `flatpack run [package]`
+- update app(s) with `flatpack update`, remove with `remove`, cleanup with `remove --unused`
+
+#### Using snaps
+
+- run on a tiny ubuntu core distro, regardless of host distro
+- are made of squashfs file systems with read only and writable portion
+- runs isolated from the system unless specifically given access to system ressource, similar to docker
+- automatically update
+- the usual commands like `snap find`, `snap info` etc., or install the `snap-store` for a graphical UI
+- to find installation folder of snaps (which are distro-dependent):
+  - `snap list` to list installed packages
+  - `which [snap package name]` patch to the symlinks to the actual package locations
+
+#### Package management: PPAs (Personal Package Archives)
+
+- allow distribution of software outside of regular repos
+- not vetted for security risks or malware
+- hosted on launchpad.net, which includes instructions to add the ppas ![launchpad](readme_images/launchpad.png)
+- these are added as individual files under `/etc/apt/sources.list.d` as usual where they can also be removed by 
+  deletion
+
+#### Homebrew package management
+
+- cross platform package manager popurlar on macOS, also available on most Linux distros
+- install following the instructions at [brew.sh](http://brew.sh) (requires ruby) or the `linux brew wrapper package`
+- manager and packages are installed in `/home/linuxbrew`
+- command: `brew` (after adding the directory to the path, instructions provided by installer), similar usage to most 
+  other package managers
+- terminology (as it comes from Mac ecosystem): ![homebrew](readme_images/homebrew.png)
+
+#### Using appimage apps
+
+- allows apps to be distributed in a single executable containing all its dependencies
+- distro-independent
+- Download the `*.AppImage` file provided by the developer, make it executable, put it wherever you want and start it. 
+  That's it.
 
 ### Working remotely
 
@@ -1375,9 +1433,144 @@ On local machine:
     # ...and get probably some locale errors that can be googled and fixe,
     # which i will not do here
 
+#### SSH Reverse tunnel
 
+Uses the same ssh connection to open a ssh connection to the local system (instead of having two separate ssh 
+connections, one in each direction, requiring an ssh server also on the local system's side).
+
+I don't really get the advantage otherwise though, and why this is a tunnel and not just a "bidirectional" ssh 
+connection.
+
+![Reverse tunnel](readme_images/reversetunnel.png)
 
 ### Process management
+
+#### ps
+
+Software runs in processes referred to by a process ID (PID)
+
+Common usage examples (all options can be combined of course):
+
+- `ps` processes in current shell session
+- `ps -e` all processes on system (**e**verything)
+- `ps -C [command name]` lists processes with that command name (e.g. `ps -C bash`)
+- `ps -ef` includes users the processes are running as, and parent processes
+- `ps aux` even more information such as cpu and memory consumed by processes
+- `ps -ejHF` process tree view (which process started which other processes, starting from pid 1 = `/sbin/init`)
+- `ps -U [username]` shows all processes a particular user has started
+
+Processes are communicated with using signals (=messages). List all signals with `kill -l`. Commonly used signal:
+`kill -9 [processID]` to kill a process **and all it's child processes**.
+
+#### top
+
+`top` to show processes and resource utilization
+
+- use arrows to go through processes, see help bar to see common actions (kill etc)
+- Load average:
+  - `[# processors fully utilized (average) in the last minute] [last 5 minutes] [last 15 minutes]`
+  - 1.0 = One processor (core) is fully utilized
+  - In a system with 12 cores, a 12.0 would indicate that the processor load is exactly "right" (fully utilized and
+    can do everything in time), anything more means some processes have to wait for execution
+  - ![load indicator](readme_images/loadindicator.png)
+- Third line explanation (`%Cpu(s)`):
+  - `us` = percentage of usage by user processes
+  - `sy` = % by system processes
+  - `ni` = % by "niced" processes (processes whose priority was changed)
+  - `id` = % idle
+  - `wa` = % waiting for IO
+  - `si` = % interrupts
+  - `st` = time given back to hypervisor (if in virtual machine)
+- Column explanation (where necessary):
+  - `PR`: priority
+  - `NI`: nice value
+  - `VIRT`: virtual memory used 
+  - `RES`, `SHR`: resident and shared memory used (?)  
+  - `S` State, S = sleeping, R = running
+  - `TIME+` cummulative processor time used
+- Keyboard shortcuts:
+  - `x` turn on highlight, `<` and `>` to select (and sort) column, reverse sort order with `R` (capital!)
+  - `r` to re-nice ((de-)prioritize process)
+  - others see help (`h`)
+
+#### htop
+
+More "graphical", configurable (F2) console version of top with slightly different information (e.g. full path to 
+executable and 
+invocation arguments)
+
+#### fg, bg, kill
+
+- Most useful: stop a process and put it in the background, e.g. an editor live vim, using `ctrl-z`,
+  do some stuff on  the  command line, go back by typing just `fg`
+- Adding `&`, e.g. `./script.sh &` will start the script in the background and display the process number
+- Put a background job in the foreground with `fg`
+- Check running jobs with `jobs`; put a specific job in the foreground with `fg %[job number displayed by jobs]`
+- kill specific jobs with `kill %[job number displayed by jobs]` (multiple possible, e.g. `kill %1 %2`)
+- Output of running processes can be seen in `/var/log/syslog`
+- background jobs can be put in the foreground again using `fg`
+- stopped jobs can be resumed in the background using `bg`
+
+*Stopping a job (not killing it) using `ctrl-z` STOPS the job; it only continues running if you put it in the 
+background using `bg [optional processid or %number]`*
+
+The processes are still child processes of the bash session that started it. To make it it's own process, use `disown`
+
+    pk@pk-lightshow:~/$ ./logger.sh
+    ^Z[1]   Terminated              ./logger.sh
+    [2]+  Stopped                 ./logger.sh
+    pk@pk-lightshow:~/$ bg
+    [2]+ ./logger.sh &
+    pk@pk-lightshow:~/$ disown %2
+    [exit terminal and start a new one]
+    pk@pk-lightshow:~/$ ps aux | grep logger
+    pk         33186  0.0  0.0   9960  3788 ?        S    08:08   0:00 bash ./logger.sh
+    pk         33316  0.0  0.0   9368   724 pts/4    S+   08:09   0:00 grep --color=auto logger
+    pk@pk-lightshow:~/$ kill 33186
+
+Alternatives for this is using `tmux` or `screen` 
+
+#### Background tasks with nohup / screen / tmux
+
+##### nohup
+
+Lets a process run in the background (you can log out from the terminal / server and it keeps running); Command output is by default to nohup.log in the current directory. Installed by default on most systems.
+nohup <command>
+
+##### screen (terminal multiplexer)
+
+Creates multiple (and optionally named) terminals; Usually must be installed first.
+
+Useful for ssh connections so interruptions of the connection don't cause a shell abort of running scripts on the
+server / remote.
+
+Usage: `screen`, or better `screen -r` to reattach to an existing screen session if it exists or create a new one.
+
+- Ctrl+key commandkey (press ctrl and key simultaneously, then release and press command key, as in emacs)
+- Ctrl+a c -> create a new window / shell
+- Ctrl+a " -> list active screens and select with cursor + enter
+- Ctrl+a ? -> help
+- Ctrl+a A -> rename current screen
+- Ctrl+a d -> detach from screen session (shells and processes in shells will continue running, you could log out now)
+- screen -r -> resumes a detached screen session
+- screen -ls -> find active screen session(s), reattach to a specific one with screen -r <number at front of session name before .pts[...]>
+
+##### tmux (terminal multiplexer)
+
+Does the same thing as screen
+
+- run `tmux` on remote machine, or `tmux -s [sessionname]` to start a named session
+- when the connection fails, connect again and run `tmux attach [?session_name]` to reconnect to the running session.
+- Most useful key combinations and commands:
+- `Ctrl-B c` to create a new window
+- `Ctrl-B x` to kill current window
+- `Ctrl-B w` to switch between sessions with GUI; kill selected session with `x`
+- `Ctrl-B d` to detach from tmux session
+- command overview witn `ctrl-B ?`
+
+Show tmux settings with `ctrl-b :show-options -g`, change settins with `ctrl-b :set [setting]=[value]`; make 
+settings permanent by creating a `.tmux.conf`
+
 
 ### Security
 
@@ -1424,6 +1617,28 @@ The rule list must end with `COMMIT`, so don't just append rules to the end of t
 
 Good overview of commands [here](https://www.linode.com/docs/guides/configure-firewall-with-ufw/)
 
+#### File checksums
+
+Check file integrity using a hash of a file.
+
+Usage to check (md5): `echo "[md5hash] [filename]" | md5sum -c`
+
+#### NTP (Network Time Protocol)
+
+Main timeservers connected to actual time keeping devices (aka "clocks") are called Stratum 1 servers. Stratum 2 are 
+servers are connected to the Stratum 1s. Stratum 3s are connected to Stratum 2s (at least 2(?))
+
+Check system synchronization status with `timedatectl`. Another useful tool for checking and setting time server 
+information: package `chrony`, command `chronyc`
+
+#### AppArmor
+
+- Provides access control for programs and processes on top of user-level security
+- enabled by default on ubuntu
+- profiles stored in `/etc/apparmor.d/`
+- Apparmor modes: enforcement (restricts), complain (logs violations); to change mode for a file in `apparmor.d`, use 
+`aa-complain [filename]` and `aa-enforce [filename]` (from apparmor utils).
+- `sudo aa-status` does what it says 
 
 ### System administration
 
@@ -1487,27 +1702,11 @@ Useful stuff:
 
 ### Process management
 
-Software runs in processes referred to by a process ID (PID)
-
-- `ps` processes in current shell session
-- `ps -e` all processes on system
-- `ps -ef` includes users the processes are running as
-- `ps aux` even more information such as cpu and memory consumed by processes
-- `ps -ejHF` process tree view (which process started which other processes, starting from pid 1 = `/sbin/init`) 
-
-Processes are communicated with using signals (=messages). List all signals with `kill -l`. Commonly used signal: 
-`kill -9 [processID]` to kill a process.
-
+See [ps](#ps) and following in the linux tips weekly section
 
 ### Ressource management (processor, memory, storage, heap etc.)
 
-- `top` or `htop` (more fancy) to show processes and ressource utilization
-  - use arrows to go through processes, see help bar to see common actions (kill etc)
-  - Load average: 
-    - `[# processors fully utilized (average) in the last minute] [last 5 minutes] [last 15 minutes]`
-    - 1.0 = One processor (core) is fully utilized
-    - In a system with 12 cores, a 12.0 would indicate that the processor load is exactly "right" (fully utilized and 
-      can do everything in time), anything more means some processes have to wait for execution
+- `top` / `htop` see [top](#top)
 - `free` shows memory / swap
 - `df` shows file system information, `df -h /` shows only info for `/`
 - find large files with `sudo find / -size +500M`
@@ -1941,6 +2140,36 @@ Skipped, easy enough setup and did docker ad nauseum
 - consider requiring a vpn to access services on the network from outside
 - never expose samba to the internet
 
+## Bash scripting
+
+Notes on course of same name by Scott Simpson
+
+### Using bash
+
+- see user's default shell with `echo $SHELL`
+
+#### Pipes and redirections
+
+- pipes take the result of one process and sends it to the other, e.g. `cat textfile.txt | grep "hello"`
+- redirections like `>` or `>>` send output to a file (overwrite or append respectively) or use the content of a 
+  file as the command input: `[command] < args.txt`
+- See [bash output redirection](#bash-output-redirection)
+
+#### Bash builtins
+
+- built in commands like `cd`, `echo` etc. can be viewed with `enable`
+- built-ins take precedence over other executables in the path unless specified otherwise
+- `command -V [command]` can be used to check whether a built-in or another command is used for a certain command:
+
+      pk@pk-lightshow:~$ command -V echo
+      echo is a shell builtin
+      pk@pk-lightshow:~$ command -V df
+      df is /usr/bin/df
+- built ins can be disabled
+
+
+
+
 ## Not course related
 
 ### Multiple commands in one line
@@ -2002,66 +2231,6 @@ This works (NOT using xargs):
 Or, using xargs again and dirname command:
 
     cd `locate --limit 1 DOOM2.WAD | xargs dirname`
-
-
-#### Background tasks with nohup / screen / tmux
-
-##### nohup
-
-Lets a process run in the background (you can log out from the terminal / server and it keeps running); Command output is by default to nohup.log in the current directory. Installed by default on most systems.
-    nohup <command>
-
-##### screen (terminal multiplexer)
-
-Creates multiple (and optionally named) terminals; Usually must be installed first.
-
-Useful for ssh connections so interruptions of the connection don't cause a shell abort of running scripts on the 
-server / remote.
-
-Usage:
-    screen
-Keys:
-Ctrl+key commandkey (press ctrl and key simultaneously, then release and press command key, as in emacs)
-
-- Ctrl+a c -> create a new window / shell
-- Ctrl+a " -> list active screens and select with cursor + enter
-- Ctrl+a A -> rename current screen
-- Ctrl+a d -> detach from screen session (shells and processes in shells will continue running, you could log out now)
-- screen -r -> resumes a detached screen session
-- screen -ls -> find active screen session(s), reattach to a specific one with screen -r <number at front of session name before .pts[...]>
-
-##### tmux (terminal multiplexer)
-
-Does the same thing as screen
-
-- run `tmux` on remote machine
-- when the connection fails, connect again and run `tmux attach` to reconnect to the running session.
-
-From cheat.sh:
-
-    # Start a new session:
-    tmux
-    
-    # Start a new named session:
-    tmux new -s name
-    
-    # List existing sessions:
-    tmux ls
-    
-    # Attach to the most recently used session:
-    tmux attach
-    
-    # Detach from the current session (inside a tmux session):
-    Ctrl-B d
-    
-    # Create a new window (inside a tmux session):
-    Ctrl-B c
-    
-    # Switch between sessions and windows (inside a tmux session):
-    Ctrl-B w
-    
-    # Kill a session by name:
-    tmux kill-session -t name
 
 
 
