@@ -195,23 +195,34 @@ The `PATH` variable stores where the system looks for binaries when a command is
 
 - Auto completion for commands, arguments or files with `tab` key; double-tab to show all possibilities that start with 
   the typed in substring.
-  - Brace expansion (useful for e.g. creating a large number of files)
+- Brace expansion (useful for e.g. creating a large number of files)
 
-        pk@pk-lightshow:/$ echo h{e,a,u}llo
-        hello hallo hullo
-        pk@pk-lightshow:/$ echo h{a..c}llo
-        hallo hbllo hcllo
-        pk@pk-lightshow:/$ echo h{c..a}llo
-        hcllo hbllo hallo
-        pk@pk-lightshow:/$ echo h{1..3}llo
-        h1llo h2llo h3llo
-        # with interval
-        pk@pk-lightshow:/$ echo h{0..100..25}llo
-        h0llo h25llo h50llo h75llo h100llo
-        pk@pk-lightshow:/$ echo {a..z}{a..z}{0..9}
-        pk@pk-lightshow:~/projects$ echo {a..z}{a..z}{0..9}
-        aa0 aa1 aa2 aa3 aa4 aa5 aa6 aa7 aa8 aa9 ab0 ab1 ab2 ab3 ab4 ab5 ab6 ab7 ab8 ab9 ac0 ac1 ac2 ac3 ac4 ac5 ac6 ac7
-        ac8 ac9 ad0 ad1 ad2 ad3 ad4 ad5 [...]
+
+    pk@pk-lightshow:/$ echo h{e,a,u}llo
+    hello hallo hullo
+    pk@pk-lightshow:/$ echo h{a..c}llo
+    hallo hbllo hcllo
+    pk@pk-lightshow:/$ echo h{c..a}llo
+    hcllo hbllo hallo
+    pk@pk-lightshow:/$ echo h{1..3}llo
+    h1llo h2llo h3llo
+    # add ß fill numbers by using two zeros at the start 
+    # (with 1000 at the endpoint it would start with 000)
+    pk@pk-lightshow:~$ echo {00..100}
+    000 001 002 003 004 [...]
+    # with interval
+    pk@pk-lightshow:/$ echo h{0..100..25}llo
+    h0llo h25llo h50llo h75llo h100llo
+    # interval works also with letters
+    pk@pk-lightshow:~$ echo {a..f..2}
+    a c e
+    # can be combined as well
+    pk@pk-lightshow:/$ echo {a..z}{a..z}{0..9}
+    aa0 aa1 aa2 aa3 aa4 aa5 aa6 aa7 aa8 aa9 ab0 ab1 ab2 ab3 ab4 ab5 ab6 ab7 ab8 ab9 ac0 ac1 ac2 ac3 ac4 ac5 ac6 ac7
+    ac8 ac9 ad0 ad1 ad2 ad3 ad4 ad5 [...]
+    # useful for example for creating whole directory structures with one command:
+    pk@pk-lightshow:~$ mkdir -p tmp/somedirectory/{config,data}
+
 
 - command substitution: `$([command])` or `` `[command]` `` takes output of command and return it as a string., e.g. 
   `echo it is $(date)` or ``echo it is `[date]` ``
@@ -2160,14 +2171,315 @@ Notes on course of same name by Scott Simpson
 - built in commands like `cd`, `echo` etc. can be viewed with `enable`
 - built-ins take precedence over other executables in the path unless specified otherwise
 - `command -V [command]` can be used to check whether a built-in or another command is used for a certain command:
+- built ins can be disabled (or rather the command version from the gnu utils enabled) by using `command -n [command]
+  ` and re-enabled by `command [command]`
 
       pk@pk-lightshow:~$ command -V echo
       echo is a shell builtin
       pk@pk-lightshow:~$ command -V df
       df is /usr/bin/df
-- built ins can be disabled
+      pk@pk-lightshow:~$ enable -n echo
+      pk@pk-lightshow:~$ command -V echo
+      echo is /usr/bin/echo
+      pk@pk-lightshow:~$ enable echo
+
+#### Brackets and braces in bash
+
+Course terminology:
+
+- `()` parentheses
+- `{}` braces
+- `[]` brackets
+
+Used differently than in most other languages.
+
+#### Bash expansions and substitutions
+
+- `~`: tilde expansion; represents users `$HOME` environment variable
+- `{...}`: brace expansion; creates sets or ranges; see examples in [exploring bash](#exploring-bash)
+- `${...}`: parameter expansion
 
 
+      pk@pk-lightshow:~$ greeting="hello there!"
+      pk@pk-lightshow:~$ echo $greeting
+      hello there!
+      pk@pk-lightshow:~$ echo ${greeting}
+      hello there!
+      # substrings
+      pk@pk-lightshow:~$ echo ${greeting:6}
+      there!
+      pk@pk-lightshow:~$ echo ${greeting:6:3}
+      the
+      # search and replace
+      # only first search occurrence
+      pk@pk-lightshow:~$ echo ${greeting/there/everybody}
+      hello everybody!
+      ## all occurrences
+      pk@pk-lightshow:~$ echo ${greeting//e/_}
+      h_llo th_r_!
+
+- `$(...)` or ``command``: command substitution
+
+
+    pk@pk-lightshow:~$ echo "The kernel is $(uname -r)."
+    The kernel is 5.4.0-84-generic.
+    # more advance use using python as the command and
+    # transforming its output using the shell "tr" commands
+    pk@pk-lightshow:~$ echo "Result: $(python3 -c 'print("hello from python")' | tr [a-z] [A-Z])"
+    Result: HELLO FROM PYTHON
+
+- `$((...))` or `$[...]` (deprecated): arithmetic expansion
+- only integers allowed and a small arithmetic set of operations
+
+
+    pk@pk-lightshow:~$ echo $((3**3))
+    27
+
+ 
+#### Understanding bash script syntax
+
+First two characters should be `#!` (shebang) followed by path to bash or env, so either
+- `#!/bin/bash` (most common) or
+- `#!/bin/env bash` (env would look into path for "bash")
+
+so an executable (`chmod u+x`) script called with `./script.sh` would be executed by the kernel like `/bin/bash .
+/myscript.sh`.
+
+This goes for all interpreters like `#!/bin/python` or `#!/bin/awk`
+
+- Non-executable scripts can be run with `bash script.sh` or `source script.sh`. The `source`command is a shell
+  built-in that executes commands from a file in the current shell.
+- Executables that are not in the path must be executed specifying the path, so if you're in the current directory
+  use `./script.sh`
+- file suffix is as always just informational for the user
+- `#` for comments
+
+#### echo
+
+- no quotes: only for simple strings and variables without brackets, parenthesis etc. Spaces are ok. brackets etc. 
+  can be escaped with `\`
+- single quotes: everything inside '' is regarded as a text, no substitutions
+- double quotes: substitutions are done, can be escaped with `\`
+- echo adds a break at the end of the output, can be overridden with `-n` option
+
+#### Working with variables
+
+- case sensitive
+- alphanumeric variable names
+- **no spaces around `=` when assigning variables**
+- surround the value with `"` if it contains any special characters like space
+- are declared on assignment (`timeleft=100` also creates the `timeleft` variable) or can be declared explicitely with
+  `declare`
+- constants can be declared with `declare -r`, e.g. `declare -r myname="pkro"`
+- `declare` has other options such as `-l`, `-u` to turn the value into all lowercase / uppercase respectively
+- `declare -p` or `export` shows all variables defined in the current session
+- remove variable with `unset`
+- assign with `[varname]=` and reference its value with `$[varname]`
+- undeclared variables evaluate to null
+- for a bash script to use a variable defined on the shell, it must be exported before running the script: `export
+  [varname]=[value]` or just `export [varname]` for an already defined variable, e.g. export `TESTVAR=6 && /bin/bash
+  /home/pk/exporttest.sh`
+- This can also be done for functions defined in the shell: `export -f myfunc`
+- String variables don't need special concatenation. Just put them one after the other: `$text1$text2`
+
+#### math with bash
+
+- arithmetic expansion `$((...))` returns the result of the operation; allowed operations: `+,-,*,/,%,**`
+- arithmetic evaluation `((...))` changes the value of variables using `++`, `*=` etc.
+- in these, the variable name is used without `$` as this would evaluate to the value, and you can't change an integer 
+  literal 
+- to declare variables as integers explicitely, declare them with `declare -i x=3`
+
+
+    # no space around "=" !
+    pk@pk-lightshow:~$ a = $((8/4))
+    a: command not found
+    pk@pk-lightshow:~$ a=$((8/4))
+    pk@pk-lightshow:~$ echo $a
+    2
+    pk@pk-lightshow:~$ ((a++))
+    pk@pk-lightshow:~$ echo $a
+    3
+    pk@pk-lightshow:~$ ((a**=2))
+    bash: ((: a**=2: syntax error: operand expected (error token is "=2")
+    pk@pk-lightshow:~$ ((a*=2))
+    pk@pk-lightshow:~$ echo $a
+    6
+    pk@pk-lightshow:~$ echo $((a+3))
+    9
+    # parenthesis can be used (with or without spaces around)
+    pk@pk-lightshow:~$ echo $(((2+3)*5))
+    25
+
+- only integer; rest gets cut off (`1/3` evaluates to 0); for floating point math, use `bc` (basic calculator) or `awk`
+
+
+
+    pk@pk-lightshow:~$ declare -i c=1
+    pk@pk-lightshow:~$ declare -i d=3
+    # scale defines num of decimals
+    pk@pk-lightshow:~$ e=$(echo "scale=3; $c/$d" | bc)
+    pk@pk-lightshow:~$ echo $e
+    .333
+
+- $RANDOM returns a pseudorandom number between 0 and 32767
+
+
+
+    pk@pk-lightshow:~$ echo $RANDOM
+    21907
+    # get a number between 1-10
+    pk@pk-lightshow:~$ echo $(( ($RANDOM+1) % 10))
+    3
+
+
+#### Comparing values with test
+
+- `test` is a shell built-in used to evaluate expressions
+- examples (many others in `help test`):
+  - `test -a [file]`: 0 (true) if file exists
+  - `test [string1] = [string2]`: true if strings are equal (**spaces!!**)
+  - `test [number1] -eq [number2]`: true if numbers are equal
+- arithmetic operators: `-eq, -ne, -lt, -le, -gt, or -ge`; if these are used with strings and return a boolean just 
+  as they would in php, depending on their position in the ascii character set
+- `[` is an alias for `test`, e.g. `[ -d 1=1 ]` (again, the spaces after / before are equally important as they are 
+  after a command like `test`
+- returns a return status, **0=success (true), 1=failure (false)**
+- exit state can be accessed in the `$?` variable or directly in a flow control structure
+- negate with `!` in front of test expression
+
+
+    pk@pk-lightshow:~$ test 1 -eq 1
+    pk@pk-lightshow:~$ echo $?
+    0
+    pk@pk-lightshow:~$ [ "cat" = "dog" ]
+    pk@pk-lightshow:~$ echo $?
+    1
+    pk@pk-lightshow:~$ [ ! 3 = 5 ]; echo $?
+    0
+
+#### Comparing values with extended test
+
+- allows multiple / more complicated expressions
+- Syntax: double brackets `[[ ... ]]`
+- more features, less compatible with other shells
+- join conditions with `&&`, `||`
+
+
+
+    # is ~ a directory and does the file /bin bash exist?
+    pk@pk-lightshow:~$ [[ -d ~ && -a /bin/bash ]]; echo $?
+    0
+
+- Commands can be logically joined with their exit codes, too. See [Multiple commands in one line](#multiple-commands-in-one-line)
+
+
+    pk@pk-lightshow:~$ [[ -d ~ ]] && echo ~ is a directory
+    /home/pk is a directory
+
+- `true` and `false` are built-ins that set a return code (0 / 1)
+- `=~` allows regular expression matching
+
+
+
+    pk@pk-lightshow:~$ [[ "cat" =~ c.* ]]; echo $?
+    0
+
+#### Formatting and styling text output
+
+`echo -e` interprets escaped characters like `\t`, `\n` etc.
+
+    pk@pk-lightshow:~$ echo -e "a\tb\tc\n123\t456\t789"
+    a       b       c
+    123     456     789
+    # color text; look it up. "m" ends the control sequence started with "\".
+    pk@pk-lightshow:~$ echo -e "\033[33;44m abc123"
+    [colored output]
+
+![colors and styles](readme_images/terminalstyles.png)
+
+    #!/bin/bash
+    underlinedRed="\033[4;31;40m"
+    red="\033[31;40m"
+    none="\033[0m"
+    echo -e $underlinedRed"Error"$none$red" Something went wrong"$none
+
+Result:
+
+![styledresult](readme_images/styledtext.png)
+
+#### Formatting output with printf
+
+The usual printf (shell built in). No comma needed for values. If multiple sets are provided like in the example 
+below, printf will repeat the pattern for each value set.
+
+    #!/bin/bash
+    printf "%(%Y-%m-%d %H:%M:%S)T\n" $(date +%s)
+    # printf defaults to current time (dateformat only) when no argument given
+    printf "%(%Y-%m-%d %H:%M:%S)T\n"
+    # pass -1 if you have multiple args and want to use printf built-in time
+    printf "%(%Y-%m-%d %H:%M:%S)T %s\n" -1 "is the date"
+    printf "%10s: %5d\n" "A label" 123  "B label" 456
+    printf "%-10s: %5d\n" "A label" 123  "B label" 456
+    printf "%-10s: %-5d\n" "A label" 123  "B label" 456
+    printf "%-10s: %05d\n" "A label" 123  "B label" 456
+    
+    # output
+    2021-09-10 09:00:12
+    2021-09-10 09:00:12
+    A label:   123
+    B label:   456
+    A label   :   123
+    B label   :   456
+    A label   : 123  
+    B label   : 456  
+    A label   : 00123
+    B label   : 00456
+
+#### Working with arrays
+
+- bash supports indexed and associative arrays
+- only one layer (no nested arrays)
+- declare directly `snacks=("apples" "oranges" "bananas")`
+- or explicitly `declare -a snacks=("apples" "oranges" "bananas")`
+- access elements with 0-based index `echo ${snacks[1]}`
+- add elements `snacks[5]="grapes"` (array can be sparse)
+- append elements on the next free index with `snacks+=("mango")` 
+- show all elements in the array with `echo ${snacks[@]}`
+- bash version 4+ supports associative arrays, declared with `-A`
+
+
+
+    pk@pk-lightshow:~$ snacks=("apple" "banana" "orange")
+    # this does NOT work
+    pk@pk-lightshow:~$ echo $snacks[1]
+    apple[1]
+    pk@pk-lightshow:~$ echo ${snacks[1]}
+    banana
+    pk@pk-lightshow:~$ declare -a snacks=("apples" "oranges" "bananas")
+    pk@pk-lightshow:~$ echo ${snacks[1]}
+    oranges
+    pk@pk-lightshow:~$ snacks[0]=butterflies
+    pk@pk-lightshow:~$ echo ${snacks}
+    butterflies
+    pk@pk-lightshow:~$ snacks[5]=grapes
+    pk@pk-lightshow:~$ snacks+=("mango")
+    pk@pk-lightshow:~$ echo ${snacks[@]}
+    butterflies oranges bananas grapes mango
+    pk@pk-lightshow:~$ for i in {0..6}; do echo "index $i: ${snacks[i]}"; done
+    index 0: butterflies
+    index 1: oranges
+    index 2: bananas
+    index 3:
+    index 4:
+    index 5: grapes
+    index 6: mango
+    
+    pk@pk-lightshow:~$ declare -A office
+    pk@pk-lightshow:~$ office[city]="Hamburg"
+    pk@pk-lightshow:~$ office["building name"]="Klaus"
+    pk@pk-lightshow:~$ echo ${office["building name"]} is in ${office[city]}
+    Klaus is in Hamburg
 
 
 ## Not course related
