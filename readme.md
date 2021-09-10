@@ -197,32 +197,30 @@ The `PATH` variable stores where the system looks for binaries when a command is
   the typed in substring.
 - Brace expansion (useful for e.g. creating a large number of files)
 
-
-
-    pk@pk-lightshow:/$ echo h{e,a,u}llo
-    hello hallo hullo
-    pk@pk-lightshow:/$ echo h{a..c}llo
-    hallo hbllo hcllo
-    pk@pk-lightshow:/$ echo h{c..a}llo
-    hcllo hbllo hallo
-    pk@pk-lightshow:/$ echo h{1..3}llo
-    h1llo h2llo h3llo
-    # add ß fill numbers by using two zeros at the start 
-    # (with 1000 at the endpoint it would start with 000)
-    pk@pk-lightshow:~$ echo {00..100}
-    000 001 002 003 004 [...]
-    # with interval
-    pk@pk-lightshow:/$ echo h{0..100..25}llo
-    h0llo h25llo h50llo h75llo h100llo
-    # interval works also with letters
-    pk@pk-lightshow:~$ echo {a..f..2}
-    a c e
-    # can be combined as well
-    pk@pk-lightshow:/$ echo {a..z}{a..z}{0..9}
-    aa0 aa1 aa2 aa3 aa4 aa5 aa6 aa7 aa8 aa9 ab0 ab1 ab2 ab3 ab4 ab5 ab6 ab7 ab8 ab9 ac0 ac1 ac2 ac3 ac4 ac5 ac6 ac7
-    ac8 ac9 ad0 ad1 ad2 ad3 ad4 ad5 [...]
-    # useful for example for creating whole directory structures with one command:
-    pk@pk-lightshow:~$ mkdir -p tmp/somedirectory/{config,data}
+      pk@pk-lightshow:/$ echo h{e,a,u}llo
+      hello hallo hullo
+      pk@pk-lightshow:/$ echo h{a..c}llo
+      hallo hbllo hcllo
+      pk@pk-lightshow:/$ echo h{c..a}llo
+      hcllo hbllo hallo
+      pk@pk-lightshow:/$ echo h{1..3}llo
+      h1llo h2llo h3llo
+      # add fill numbers by using two zeros at the start 
+      # (with 1000 at the endpoint it would start with 000)
+      pk@pk-lightshow:~$ echo {00..100}
+      000 001 002 003 004 [...]
+      # with interval
+      pk@pk-lightshow:/$ echo h{0..100..25}llo
+      h0llo h25llo h50llo h75llo h100llo
+      # interval works also with letters
+      pk@pk-lightshow:~$ echo {a..f..2}
+      a c e
+      # can be combined as well
+      pk@pk-lightshow:/$ echo {a..z}{a..z}{0..9}
+      aa0 aa1 aa2 aa3 aa4 aa5 aa6 aa7 aa8 aa9 ab0 ab1 ab2 ab3 ab4 ab5 ab6 ab7 ab8 ab9 ac0 ac1 ac2 ac3 ac4 ac5 ac6 ac7
+      ac8 ac9 ad0 ad1 ad2 ad3 ad4 ad5 [...]
+      # useful for example for creating whole directory structures with one command:
+      pk@pk-lightshow:~$ mkdir -p tmp/somedirectory/{config,data}
 
 
 - command substitution: `$([command])` or `` `[command]` `` takes output of command and return it as a string., e.g. 
