@@ -198,6 +198,7 @@ The `PATH` variable stores where the system looks for binaries when a command is
 - Brace expansion (useful for e.g. creating a large number of files)
 
 
+
     pk@pk-lightshow:/$ echo h{e,a,u}llo
     hello hallo hullo
     pk@pk-lightshow:/$ echo h{a..c}llo
