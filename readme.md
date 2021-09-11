@@ -191,6 +191,7 @@ The `PATH` variable stores where the system looks for binaries when a command is
     `h`for help
 - `ip a` or `ifconfig` for network information
 
+
 #### Exploring bash
 
 - Auto completion for commands, arguments or files with `tab` key; double-tab to show all possibilities that start with 
@@ -1475,7 +1476,8 @@ Processes are communicated with using signals (=messages). List all signals with
 #### top
 
 `top` to show processes and resource utilization
-
+- launch with `top -i` to hide idle processes
+- non-interactive for batch operation, show only one iteration: `top -b -n 1`
 - use arrows to go through processes, see help bar to see common actions (kill etc)
 - Load average:
   - `[# processors fully utilized (average) in the last minute] [last 5 minutes] [last 15 minutes]`
@@ -2247,7 +2249,10 @@ so an executable (`chmod u+x`) script called with `./script.sh` would be execute
 This goes for all interpreters like `#!/bin/python` or `#!/bin/awk`
 
 - Non-executable scripts can be run with `bash script.sh` or `source script.sh`. The `source`command is a shell
-  built-in that executes commands from a file in the current shell.
+  built-in that executes commands from a file in the current shell (so an `exit` statement in the script will exit 
+  the current shell; if you want to avoid that, make it executable, which will spawn a subshell instead of running 
+  it with `source`). 
+- A script can be exited with `exit [?status]` or `return`
 - Executables that are not in the path must be executed specifying the path, so if you're in the current directory
   use `./script.sh`
 - file suffix is as always just informational for the user
@@ -2347,15 +2352,14 @@ This goes for all interpreters like `#!/bin/python` or `#!/bin/awk`
 - exit state can be accessed in the `$?` variable or directly in a flow control structure
 - negate with `!` in front of test expression
 
-
-    pk@pk-lightshow:~$ test 1 -eq 1
-    pk@pk-lightshow:~$ echo $?
-    0
-    pk@pk-lightshow:~$ [ "cat" = "dog" ]
-    pk@pk-lightshow:~$ echo $?
-    1
-    pk@pk-lightshow:~$ [ ! 3 = 5 ]; echo $?
-    0
+      pk@pk-lightshow:~$ test 1 -eq 1
+      pk@pk-lightshow:~$ echo $?
+      0
+      pk@pk-lightshow:~$ [ "cat" = "dog" ]
+      pk@pk-lightshow:~$ echo $?
+      1
+      pk@pk-lightshow:~$ [ ! 3 = 5 ]; echo $?
+      0
 
 #### Comparing values with extended test
 
@@ -2364,11 +2368,9 @@ This goes for all interpreters like `#!/bin/python` or `#!/bin/awk`
 - more features, less compatible with other shells
 - join conditions with `&&`, `||`
 
-
-
-    # is ~ a directory and does the file /bin bash exist?
-    pk@pk-lightshow:~$ [[ -d ~ && -a /bin/bash ]]; echo $?
-    0
+      # is ~ a directory and does the file /bin bash exist?
+      pk@pk-lightshow:~$ [[ -d ~ && -a /bin/bash ]]; echo $?
+      0
 
 - Commands can be logically joined with their exit codes, too. See [Multiple commands in one line](#multiple-commands-in-one-line)
 
