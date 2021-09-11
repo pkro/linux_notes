@@ -2449,38 +2449,36 @@ below, printf will repeat the pattern for each value set.
 - show all elements in the array with `echo ${snacks[@]}`
 - bash version 4+ supports associative arrays, declared with `-A`
 
-
-
-    pk@pk-lightshow:~$ snacks=("apple" "banana" "orange")
-    # this does NOT work
-    pk@pk-lightshow:~$ echo $snacks[1]
-    apple[1]
-    pk@pk-lightshow:~$ echo ${snacks[1]}
-    banana
-    pk@pk-lightshow:~$ declare -a snacks=("apples" "oranges" "bananas")
-    pk@pk-lightshow:~$ echo ${snacks[1]}
-    oranges
-    pk@pk-lightshow:~$ snacks[0]=butterflies
-    pk@pk-lightshow:~$ echo ${snacks}
-    butterflies
-    pk@pk-lightshow:~$ snacks[5]=grapes
-    pk@pk-lightshow:~$ snacks+=("mango")
-    pk@pk-lightshow:~$ echo ${snacks[@]}
-    butterflies oranges bananas grapes mango
-    pk@pk-lightshow:~$ for i in {0..6}; do echo "index $i: ${snacks[i]}"; done
-    index 0: butterflies
-    index 1: oranges
-    index 2: bananas
-    index 3:
-    index 4:
-    index 5: grapes
-    index 6: mango
+      pk@pk-lightshow:~$ snacks=("apple" "banana" "orange")
+      # this does NOT work
+      pk@pk-lightshow:~$ echo $snacks[1]
+      apple[1]
+      pk@pk-lightshow:~$ echo ${snacks[1]}
+      banana
+      pk@pk-lightshow:~$ declare -a snacks=("apples" "oranges" "bananas")
+      pk@pk-lightshow:~$ echo ${snacks[1]}
+      oranges
+      pk@pk-lightshow:~$ snacks[0]=butterflies
+      pk@pk-lightshow:~$ echo ${snacks}
+      butterflies
+      pk@pk-lightshow:~$ snacks[5]=grapes
+      pk@pk-lightshow:~$ snacks+=("mango")
+      pk@pk-lightshow:~$ echo ${snacks[@]}
+      butterflies oranges bananas grapes mango
+      pk@pk-lightshow:~$ for i in {0..6}; do echo "index $i: ${snacks[i]}"; done
+      index 0: butterflies
+      index 1: oranges
+      index 2: bananas
+      index 3:
+      index 4:
+      index 5: grapes
+      index 6: mango
     
-    pk@pk-lightshow:~$ declare -A office
-    pk@pk-lightshow:~$ office[city]="Hamburg"
-    pk@pk-lightshow:~$ office["building name"]="Klaus"
-    pk@pk-lightshow:~$ echo ${office["building name"]} is in ${office[city]}
-    Klaus is in Hamburg
+      pk@pk-lightshow:~$ declare -A office
+      pk@pk-lightshow:~$ office[city]="Hamburg"
+      pk@pk-lightshow:~$ office["building name"]="Klaus"
+      pk@pk-lightshow:~$ echo ${office["building name"]} is in ${office[city]}
+      Klaus is in Hamburg
 
 
 ## Not course related

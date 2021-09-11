@@ -3,7 +3,7 @@
 # Helpers
 header () {
   header=$1
-  echo -e "[033${header}\n${header//?/=}"
+  echo -e "\033[4;32;47m${header}\033[0m"
 }
 declare -a system_info
 
@@ -14,32 +14,35 @@ system_info+="$(header 'Linux kernel and distro info:')"
 system_info+="$(hostnamectl | grep 'hostname\|Operating\|Kernel')"
 
 # processor / cores, ram
-header "cpu and memory info:"
-lscpu | grep "Architecture\|^CPU(s):\|Model name"
-free -h
+system_info+="$(header 'cpu and memory info:')"
+system_info+="$(lscpu | grep 'Architecture\|^CPU(s):\|Model name')"
+
+system_info+="$(free -h)"
 
 # HDs/Partitions space
-header "HD / partitions"
-lsblk | grep -v loop
-df -h | grep -v loop
+system_info+="$(header 'HD / partitions')"
+system_info+="$(lsblk | grep -v loop)"
+system_info+="$(df -h | grep -v loop)"
 
 # network interfaces, bandwidth
 
 # status of apache2 and nginx
-header "Apache2:"
-systemctl status apache2 | grep 'Active:'
-header "Nginx:"
-systemctl status nginx| grep 'Active:'
+system_info+="$(header 'Apache2:')"
+system_info+="$(systemctl status apache2 | grep 'Active:')"
+system_info+="$(header 'Nginx:')"
+system_info+="$(systemctl status nginx| grep 'Active:')"
 
 # status of major dbs (mysql, mariadb, postgres)
-header "Mysql / mariadb":
-systemctl status mysql | grep 'Active:'
+system_info+="$(header 'Mysql / mariadb':)"
+system_info+="$(systemctl status mysql | grep 'Active:')"
 
 # processes using the most processor time
-header "System load"
-top -b -n 1 -i | grep 'load average:'
+system_info+="$(header 'System load')"
+system_info+="$(top -b -n 1 -i | grep 'load average:')"
 # errors since last start
 
 # Is cockpit installed?
-header "Cockpit"
-sudo systemctl status cockpit | grep Loaded:
+system_info+="$(header 'Cockpit')"
+system_info+="$(sudo systemctl status cockpit | grep Loaded:)"
+
+echo $system_info[@]
