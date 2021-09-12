@@ -2198,7 +2198,7 @@ Used differently than in most other languages.
 
 - `~`: tilde expansion; represents users `$HOME` environment variable
 - `{...}`: brace expansion; creates sets or ranges; see examples in [exploring bash](#exploring-bash)
-- `${...}`: parameter expansion
+- `${...}`: parameter expansion; variable access is a special case of parameter expansion
 
 
       pk@pk-lightshow:~$ greeting="hello there!"
@@ -2221,21 +2221,20 @@ Used differently than in most other languages.
 
 - `$(...)` or ``command``: command substitution
 
-
-    pk@pk-lightshow:~$ echo "The kernel is $(uname -r)."
-    The kernel is 5.4.0-84-generic.
-    # more advance use using python as the command and
-    # transforming its output using the shell "tr" commands
-    pk@pk-lightshow:~$ echo "Result: $(python3 -c 'print("hello from python")' | tr [a-z] [A-Z])"
-    Result: HELLO FROM PYTHON
+      pk@pk-lightshow:~$ echo "The kernel is $(uname -r)."
+      The kernel is 5.4.0-84-generic.
+      # more advance use using python as the command and
+      # transforming its output using the shell "tr" commands
+      pk@pk-lightshow:~$ echo "Result: $(python3 -c 'print("hello from python")' | tr [a-z] [A-Z])"
+      Result: HELLO FROM PYTHON
 
 - `$((...))` or `$[...]` (deprecated): arithmetic expansion
 - only integers allowed and a small arithmetic set of operations
 
+      pk@pk-lightshow:~$ echo $((3**3))
+      27
 
-    pk@pk-lightshow:~$ echo $((3**3))
-    27
-
+- `((...))` arithmetic evaluation
  
 #### Understanding bash script syntax
 
@@ -2294,47 +2293,42 @@ This goes for all interpreters like `#!/bin/python` or `#!/bin/awk`
   literal 
 - to declare variables as integers explicitely, declare them with `declare -i x=3`
 
-
-    # no space around "=" !
-    pk@pk-lightshow:~$ a = $((8/4))
-    a: command not found
-    pk@pk-lightshow:~$ a=$((8/4))
-    pk@pk-lightshow:~$ echo $a
-    2
-    pk@pk-lightshow:~$ ((a++))
-    pk@pk-lightshow:~$ echo $a
-    3
-    pk@pk-lightshow:~$ ((a**=2))
-    bash: ((: a**=2: syntax error: operand expected (error token is "=2")
-    pk@pk-lightshow:~$ ((a*=2))
-    pk@pk-lightshow:~$ echo $a
-    6
-    pk@pk-lightshow:~$ echo $((a+3))
-    9
-    # parenthesis can be used (with or without spaces around)
-    pk@pk-lightshow:~$ echo $(((2+3)*5))
-    25
+      # no space around "=" !
+      pk@pk-lightshow:~$ a = $((8/4))
+      a: command not found
+      pk@pk-lightshow:~$ a=$((8/4))
+      pk@pk-lightshow:~$ echo $a
+      2
+      pk@pk-lightshow:~$ ((a++))
+      pk@pk-lightshow:~$ echo $a
+      3
+      pk@pk-lightshow:~$ ((a**=2))
+      bash: ((: a**=2: syntax error: operand expected (error token is "=2")
+      pk@pk-lightshow:~$ ((a*=2))
+      pk@pk-lightshow:~$ echo $a
+      6
+      pk@pk-lightshow:~$ echo $((a+3))
+      9
+      # parenthesis can be used (with or without spaces around)
+      pk@pk-lightshow:~$ echo $(((2+3)*5))
+      25
 
 - only integer; rest gets cut off (`1/3` evaluates to 0); for floating point math, use `bc` (basic calculator) or `awk`
 
-
-
-    pk@pk-lightshow:~$ declare -i c=1
-    pk@pk-lightshow:~$ declare -i d=3
-    # scale defines num of decimals
-    pk@pk-lightshow:~$ e=$(echo "scale=3; $c/$d" | bc)
-    pk@pk-lightshow:~$ echo $e
-    .333
+      pk@pk-lightshow:~$ declare -i c=1
+      pk@pk-lightshow:~$ declare -i d=3
+      # scale defines num of decimals
+      pk@pk-lightshow:~$ e=$(echo "scale=3; $c/$d" | bc)
+      pk@pk-lightshow:~$ echo $e
+      .333
 
 - $RANDOM returns a pseudorandom number between 0 and 32767
 
-
-
-    pk@pk-lightshow:~$ echo $RANDOM
-    21907
-    # get a number between 1-10
-    pk@pk-lightshow:~$ echo $(( ($RANDOM+1) % 10))
-    3
+      pk@pk-lightshow:~$ echo $RANDOM
+      21907
+      # get a number between 1-10
+      pk@pk-lightshow:~$ echo $(( ($RANDOM % 10) + 1 ))
+      3
 
 
 #### Comparing values with test
@@ -2480,6 +2474,221 @@ below, printf will repeat the pattern for each value set.
       pk@pk-lightshow:~$ echo ${office["building name"]} is in ${office[city]}
       Klaus is in Hamburg
 
+#### Conditionals
+
+    if [command|condition|enhanced condition]
+    then ...
+    [elif ... then]
+    [else]
+    fi
+
+    declare -i a=3
+    # using enhanced test 
+    if[[ $a -gt 4 ]]; then
+      echo "$a is greater than 4"
+    elif [[ $a -eq 4 ]]; then
+      echo "$a is equal to 4"
+    else
+      echo "$a is smaller than 4"
+    fi
+
+    # using arithmetic evaluation
+    if (( $a > 4 )); then
+    [... same]
+
+#### Loops
+
+- `while` the usual
+- `until` runs until a condition is true
+
+
+    declare -i n=0
+    
+    while (( n < 10 ))
+    do
+      echo "n:$n"
+      ((n++))
+    done
+    
+    declare -i m=0
+    until (( m == 10 ))
+    do
+      echo "m:$m"
+      ((m++))
+    done
+
+#### For loops
+
+    # "in" version, with list of items
+    for i in 1 2 3
+    do
+      echo $i
+    done
+    
+    # one line, brace expansion
+    for i in {1..100}; do echo $i; done
+    
+    # arithmetic evaluation (c-style)
+    for (( i=1; i<=100; i++ ))
+    do
+      echo $i
+    done
+    
+    # using parameter expansion
+    declare -a fruits=("apple" "banana" "cherry")
+    # fruits[@] expands to "apple banana cherry", so it's basically
+    # the same as the first "in" version
+    for fruit in ${fruits[@]}; do echo $fruit; done
+    
+    # command substitution
+    for i in $(ls); do echo "Found a file: ${i}"; done
+
+#### case statement
+
+    animal="dog"
+    case $animal in
+      cat) echo "Feline";; # note 2 semicolons at the end
+      #multiple statements, end indicated by ;; 
+      dog|puppy) echo "Canine"; echo "a nice doggy";;  
+      *) echo "No match";; # default
+    esac
+
+#### Functions
+
+Need to be declared before they're used. Can be defined with and without function keyword and braces.
+No explicit arguments, and arguments are not put in braces when calling the functions. Inside the function, the 
+arguments are refered to withz `$1`, `$2` etc.
+
+Other special variables:
+- `$@` = list of arguments given to a function
+- `$FUNCNAME` = name of the function
+
+
+
+    greet() {
+      echo "hello $1; my name is $FUNCNAME and I received the following arguments:"
+      declare -i i=1
+      for f in $@; do
+        echo "$i $f"
+        (( i++ ))
+      done
+    }
+    pk@pk-lightshow:~/projects/linux/linux_notes/shell_scripts$ greet pkro yay -1 
+    hello pkro; my name is greet and I received the following arguments:
+    1 pkro
+    2 yay
+    3 -1
+    pk@pk-lightshow:~/projects/linux/linux_notes/shell_scripts$ greet $(ls)
+    hello arrays.sh; my name is greet and I received the following arguments:
+    1 arrays.sh
+    2 exporttest.sh
+    3 printf.sh
+    4 styledtext.sh
+    5 system_report_challenge.sh
+
+Unless otherwise specified, all variables in bash are global; local variables can be defined with `local` that 
+accepts the same parameters as `declare`, e.g. `local -i i=1`
+
+#### Reading and writing text files
+
+The usual input / output redirections with `>`, `>>` and `<` apply. Lines can be read with `read`
+
+    textfile="textfile.txt"
+    for i in {1..5}
+    do
+      echo "this is line $i" >> ${textfile}
+    done
+    
+    while read line; do echo $line; done < ${textfile}
+    rm ${textfile} 2>/dev/null && echo "removed file" || echo "couldn't delete file"
+
+### User interaction
+
+#### Working with arguments
+
+- Like function arguments, script arguments can be accessed with `$1`, `$2` etc.
+- `$0` contains the script name
+- `$@` contains an array of arguments
+- `$#` contains the number of arguments
+- the options are included (`-u`, `username` etc) are included in the arguments array
+
+#### Working with options
+
+- also allows to pass information into a script
+- either `-[letter]`
+- accessed using `getopts`
+- must be passed *before* other arguments
+
+
+Script:
+
+    echo "you gave $# arguments to the script $0: $@"
+    echo "the first one was $1"
+    echo "Options accepted by this script are u and p"
+    
+    # specify known options with "[letter]:"
+    # unknown options with ":"
+    # just "[letter]" to check IF it was passed
+    while getopts :u:p:ab option; do
+      case $option in
+      u) user=$OPTARG;;
+      p) pass=$OPTARG;;
+      a) echo "\"a\" flag was passed";;
+      b) echo "\"b\" flag was passed";;
+      ?) echo "I don't know $OPTARG";;
+      esac
+    done
+    
+    echo "user: $user, pass: $pass"
+
+    # terminal
+    pk@pk-lightshow:~/$ ./argsopts.sh -u joe -p secret -b -x blah hello
+    you gave 8 arguments to the script ./argsopts.sh: -u joe -p secret -b -x blah hello
+    the first one was -u
+    Options accepted by this script are u and p
+    "b" flag was passed
+    I don't know x
+    user: joe, pass: secret
+
+#### Interactive input
+
+`read` pauses execution of the script and reads from stdin
+
+    # show prompt before input
+    read -p "Please enter your name: " name
+    # silent input
+    echo "Please enter your pass"
+    read -s pass
+    # add a default
+    read -ep "Favorite color? Default is " -i "blue" favcolor
+    
+    echo "Hi $name! please select an animal:"
+    
+    # interactive select
+    select animal in "cat" "dog" "bird" "fish" "quit"
+    do
+      if [ $animal = "quit" ]; then
+            break
+      fi
+      echo "You selected $animal"
+    done
+    
+    # expect a certain format:
+    read -p "What year? [nnnn] " year
+    
+    until [[ $year =~ [0-9]{4} ]]; do
+      read -p "What year? [nnnn] " year
+    done
+    echo "Selected year: $year"
+
+### Troubleshooting / script portability
+
+- read errors / line numbers carefully
+- tell bash to show every command that it runs with `set -x`
+- check bash version with $BASH_VERSION and $BASH_VERSINFO: `[[ $BASH_VERSINFO -ge 4 ]]`
+- check if tools needed exist: `[[ ! -a $(which nmao) ]] && echo "nmap not found on system" && exit`
+- write scripts for bourne shell (sh)
+- 
 
 ## Not course related
 
