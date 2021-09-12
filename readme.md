@@ -2374,17 +2374,14 @@ This goes for all interpreters like `#!/bin/python` or `#!/bin/awk`
 
 - Commands can be logically joined with their exit codes, too. See [Multiple commands in one line](#multiple-commands-in-one-line)
 
-
-    pk@pk-lightshow:~$ [[ -d ~ ]] && echo ~ is a directory
-    /home/pk is a directory
+      pk@pk-lightshow:~$ [[ -d ~ ]] && echo ~ is a directory
+      /home/pk is a directory
 
 - `true` and `false` are built-ins that set a return code (0 / 1)
 - `=~` allows regular expression matching
-
-
-
-    pk@pk-lightshow:~$ [[ "cat" =~ c.* ]]; echo $?
-    0
+  
+      pk@pk-lightshow:~$ [[ "cat" =~ c.* ]]; echo $?
+      0
 
 #### Formatting and styling text output
 
@@ -2448,6 +2445,7 @@ below, printf will repeat the pattern for each value set.
 - append elements on the next free index with `snacks+=("mango")` 
 - show all elements in the array with `echo ${snacks[@]}`
 - bash version 4+ supports associative arrays, declared with `-A`
+- get length of an array by prefixing the "show all" version it with `#`: `len=${#snacks[@]}`
 
       pk@pk-lightshow:~$ snacks=("apple" "banana" "orange")
       # this does NOT work
@@ -2465,6 +2463,8 @@ below, printf will repeat the pattern for each value set.
       pk@pk-lightshow:~$ snacks+=("mango")
       pk@pk-lightshow:~$ echo ${snacks[@]}
       butterflies oranges bananas grapes mango
+      pk@pk-lightshow:~$ echo ${#snacks[@]}
+      5
       pk@pk-lightshow:~$ for i in {0..6}; do echo "index $i: ${snacks[i]}"; done
       index 0: butterflies
       index 1: oranges
