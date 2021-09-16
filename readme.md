@@ -1643,6 +1643,56 @@ servers are connected to the Stratum 1s. Stratum 3s are connected to Stratum 2s 
 Check system synchronization status with `timedatectl`. Another useful tool for checking and setting time server 
 information: package `chrony`, command `chronyc`
 
+#### Encrypting files
+
+- symmetric encryption with password: `gpg -c secretfile`, decrypt with `gpg -d [file]`, redirect output to 
+  create a file; if the file was created by the same user, the stored key is used automatically
+- encryption with keyfile (symmetric or asymmetric)
+  - check available system entropy used by `/dev/random`, gathered by the system by different random events such as network 
+    activity, mouse movement etc.: `cat /proc/sys/kernel/random/entropy_avail`; sidenote: `/dev/urandom` provides 
+    less secure pseudo-random numbers. Processes that need a lot of random numbers might stall if `/dev/random` runs 
+    out of entropy (=available real random numbers) 
+  - for more entropy, install `rng-tools` that includes random number generation software; add more entropy by using 
+    `sudo rngd -fr /dev/urandom`, which basically shovels pseudo random numbers from `urandom` to `random`
+  - create a keyfile with `gpg --gen-key`
+  - list keys with `gpg --list-keys`
+  - encrypt for a specific user that you have the public key imported in the keyring with `gpg -e [file]`, you will get 
+    prompted for the user; decrypt again with `gpg -d`
+  - import other people's keys with `gpg --import`
+  - export own public key with `gpg --export --armor [email] > mypubkey`; `--armor` makes it a text, otherwise it 
+    exports a binary
+
+#### Encrypted filesystems
+
+LUKS (Linux Unified Key Setup). Has 8 key slots per volume (backup keys or for other people, `cryptsetup luksAddKey`). 
+Encrypts filesystems while not in use. Can only be mounted on Linux.
+The header with the keys can be individually backuped with `luksHeaderBackup` and `luksHeaderRestore` options.
+
+    # Example: USB drive with LUKS container
+    # delete existing and create new partition
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo fdisk /dev/sdd
+    # delete existing partition
+    Command (m for help): d
+    # list partitions
+    Command (m for help): p
+    # create new partition, accept all defaults
+    Command (m for help): n
+    # write changes to disk
+    Command (m for help): n
+    # install cryptsetup
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo apt install cryptsetup
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo cryptsetup luksFormat /dev/sdd1
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo cryptsetup luksOpen /dev/sdd1 my_secrets
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo mkfs.ext4 /dev/mapper/my_secrets
+    # mount the drive
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo mkdir /media/secrets
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo mount /dev/mapper/my_secrets /media/secrets
+    [...]
+    # unmount after use
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo umount /media/secrets
+    # close!
+    pk@pk-lightshow:~/projects/linux/linux_notes$ sudo cryptsetup luksClose my_secrets
+
 #### AppArmor
 
 - Provides access control for programs and processes on top of user-level security
@@ -1652,7 +1702,239 @@ information: package `chrony`, command `chronyc`
 `aa-complain [filename]` and `aa-enforce [filename]` (from apparmor utils).
 - `sudo aa-status` does what it says 
 
+#### SELinux
+
+- Securitiy Enhanced Linux
+- adds Contexts for access control for files, users and processes (on top of file permissions and ACLs)
+- Common SELinux related commands
+  - `chcon`: change an items context
+  - `restorecon`: reset items context to default
+  - `ls -Z`: shows file context information
+  - `ps -Z`: shows context of processes
+
+![SELinux context](readme_images/selinux_context.png)
+
+- Moving a file retains its context, copying applies the context of the destination
+- Troubleshooting:
+  - `ausearch -m avc` check journal for errors
+  - set to permissive; `sestatus` to view current mode, `setenforce` to change mode temporarily
+
+#### Firewalls: firewalld
+
+- firewall used on Red Hat, CentOS and Fedora usint "zones"
+- Admin command: `firewall-cmd`, service name `firewalld`
+
+
 ### System administration
+
+#### Disks and partitions
+
+- the `s` in sda / sdb etc. stands for "serial"
+- some gparted stuff
+- don't forget to chown the mount point of the newly created partition, e.g. `sudo chown pk:pk "/media/pk/my files yay"`
+- on linux, all filesystems are mounted inside the root filesystem `/`
+- on windows, each filesystem appears as separate drives
+- on mac, they are called volumes
+
+#### Logical Volume Management
+
+- manage storage volumes flexibly
+  - creates logical volumes within volume groups of physical volumes
+  - span disks, migrate between disks, resize on the fly
+  - LVM maps data in logical extents to physical extents on disk
+
+Moving data between filesystems with LVM:
+
+![lvm1](readme_images/lvm1.png)
+
+![lvm1](readme_images/lvm2.png)
+
+![lvm1](readme_images/lvm3.png)
+
+Doing the above on the shell, all with the filesystem kept online:
+
+    pk@pk-lightshow:~$ sudo apt install lvm2
+    # create physical volume
+    pk@pk-lightshow:~$ sudo pvcreate /dev/sdd1
+    Physical volume "/dev/sdd1" successfully created.
+    pk@pk-lightshow:~$ sudo pvdisplay
+    "/dev/sdd1" is a new physical volume of "<29,30 GiB"
+    # create volume group
+    pk@pk-lightshow:~$ sudo vgcreate my_vg /dev/sdd1
+    Volume group "my_vg" successfully created
+    pk@pk-lightshow:~$ sudo vgscan
+    Found volume group "my_vg" using metadata type lvm2
+    # create logical volume on my_vg group
+    pk@pk-lightshow:~$ sudo lvcreate -l 100%VG -n my_lv my_vg
+    Logical volume "my_lv" created.
+    pk@pk-lightshow:~$ sudo lvscan
+    ACTIVE            '/dev/my_vg/my_lv' [29,29 GiB] inherit
+    pk@pk-lightshow:~$ sudo lvdisplay
+    --- Logical volume ---
+    LV Path                /dev/my_vg/my_lv
+    LV Name                my_lv
+    VG Name                my_vg
+    LV UUID                K3cHks-sod8-e7kB-tZ7q-At9Y-1ACF-iyFSdO
+    LV Write Access        read/write
+    LV Creation host, time pk-lightshow, 2021-09-15 08:21:32 +0200
+    LV Status              available
+    # open                 0
+    LV Size                29,29 GiB
+    Current LE             7499
+    Segments               1
+    Allocation             inherit
+    Read ahead sectors     auto
+    - currently set to     256
+      Block device           253:0
+    # create filesystem on block device
+    pk@pk-lightshow:~$ sudo mkfs.ext4 /dev/mapper/my_vg-my_l
+    # create mount point and mount it
+    pk@pk-lightshow:~$ sudo mkdir /media/lvm-disk
+    pk@pk-lightshow:~$ sudo mount /dev/mapper/my_vg-my_lv /media/lvm-disk/
+    # for fun, create a large file that takes up most of the space
+    pk@pk-lightshow:/media/lvm-disk$ sudo fallocate -l 20GB bigfile
+    pk@pk-lightshow:/media/lvm-disk$ ls -l
+    total 19531272
+    -rw-r--r-- 1 root root 20000000000 Sep 15 08:26 bigfile
+    drwx------ 2 root root       16384 Sep 15 08:22 lost+found
+    pk@pk-lightshow:/media/lvm-disk$
+    # add another partition (sdc2) to the lvm 
+    pk@pk-lightshow:/media/lvm-disk$ sudo pvcreate /dev/sdc2
+    pk@pk-lightshow:/media/lvm-disk$ sudo vgextend my_vg /dev/sdc2
+    Volume group "my_vg" successfully extended
+    # move physical data from one physical volume to another
+    pk@pk-lightshow:/media/lvm-disk$ sudo pvmove -n my_vg/my_lv /dev/sdd1 /dev/sdc2
+    # remove old physical volume from volumegroup
+    pk@pk-lightshow:/media/lvm-disk$ sudo vgreduce my_vg /dev/sdd1
+    Removed "/dev/sdd1" from volume group "my_vg"
+    # extend logical volume to all available space on new drive
+    # so far it only takes the same space as needed for the data from the data on sdd1
+    pk@pk-lightshow:/media/lvm-disk$ sudo lvextend -l 100%VG /dev/mapper/my_vg-my_lv
+    Size of logical volume my_vg/my_lv changed from 29,29 GiB (7499 extents) to 101,32 GiB (25938 extents).
+    Logical volume my_vg/my_lv successfully resized.
+    # to extend the space of the filesystem on the logical volume, we need to unmount it first
+    pk@pk-lightshow:/media/lvm-disk$ cd
+    pk@pk-lightshow:~$ sudo umount /media/lvm-disk
+    # check filesystem first
+    pk@pk-lightshow:~$ sudo e2fsck -f /dev/mapper/my_vg-my_lv
+    e2fsck 1.45.5 (07-Jan-2020)
+    Pass 1: Checking inodes, blocks, and sizes
+    Pass 2: Checking directory structure
+    Pass 3: Checking directory connectivity
+    Pass 4: Checking reference counts
+    Pass 5: Checking group summary information
+    /dev/mapper/my_vg-my_lv: 12/1921360 files (0.0% non-contiguous), 408790/7678976 blocks
+    pk@pk-lightshow:~$ sudo resize2fs /dev/mapper/my_vg-my_lv
+    resize2fs 1.45.5 (07-Jan-2020)
+    Resizing the filesystem on /dev/mapper/my_vg-my_lv to 26560512 (4k) blocks.
+    The filesystem on /dev/mapper/my_vg-my_lv is now 26560512 (4k) blocks long.
+    # remount
+    pk@pk-lightshow:~$ sudo mount /dev/mapper/my_vg-my_lv /media/lvm-disk/
+
+#### Create a Raid array
+
+Raid levels:
+
+![raid levels](readme_images/raidlevels.png)
+
+- Can be implemented with hardware controllers or software.
+- Software raids are managed by `mdadm`
+- RAID devices are referred to as /dev/md0, /dev/md1 etc.
+- Time to sync (parity-type RAID levels) scales with the size of the array
+- The array syncs blocks, not files
+
+Creating a RAID 5 of 3 20GB devices, = 40 GB capacity and one disk can be lost without harming the data
+
+We should use partitions (that don't span the whole disk size) to get the exact sizes of each unit right.
+
+Partitions (in this test all partitions on the same drive) already created with gparted: sdc2, sdc3, sdc4
+
+    pk@pk-lightshow:~/$ lsblk
+    [...]
+    ├─sdc2   8:34   0  19,5G  0 part
+    ├─sdc3   8:35   0  19,5G  0 part
+    └─sdc4   8:36   0  19,5G  0 part
+    pk@pk-lightshow:~/$ sudo mdadm --create /dev/md0 --level=5 --raid-devices=3 /dev/sdc2 /dev/sdc3 /dev/sdc4
+    [...]
+    Continue creating array? y
+    mdadm: Defaulting to version 1.2 metadata
+    mdadm: array /dev/md0 started.
+    # array will be built in the background but can be used immediately
+    # check build status
+    pk@pk-lightshow:~/$ sudo mdadm --detail /dev/md0
+    /dev/md0:
+    Version : 1.2
+    Creation Time : Thu Sep 16 07:52:06 2021
+    Raid Level : raid5
+    Array Size : 40925184 (39.03 GiB 41.91 GB)
+    Used Dev Size : 20462592 (19.51 GiB 20.95 GB)
+    Raid Devices : 3
+    [...]
+        Rebuild Status : 25% complete[...]
+    Number   Major   Minor   RaidDevice State
+           0       8       34        0      active sync   /dev/sdc2
+           1       8       35        1      active sync   /dev/sdc3
+           3       8       36        2      spare rebuilding   /dev/sdc4
+    pk@pk-lightshow:~/$
+    pk@pk-lightshow:~/$ sudo mkfs.ext4 /dev/md0
+    pk@pk-lightshow:~/$ sudo mkdir /media/my_raid
+    pk@pk-lightshow:~/$ sudo mount /dev/md0 /media/my_raid/
+    # md0 will be mounted automatically as md127 next restart for some reason
+    # so we must set it explicitely to md0 in /etc/mdadm/mdadm.conf
+    # First, find UUID
+    pk@pk-lightshow:~/$ sudo mdadm --detail /dev/md0 | grep UUID
+    UUID : 9c34ec78:3b6c8822:adbe72ca:4c2c54b5
+    pk@pk-lightshow:~/$ sudo vi /etc/mdadm/mdadm.conf
+    # Add the uuid under the section here:
+        # definitions of existing MD arrays
+        ARRAY /dev/md0 UUID=9c34ec78:3b6c8822:adbe72ca:4c2c54b5
+    # update as suggested in mdadm.conf
+    pk@pk-lightshow:~/$ sudo update-initramfs -u
+    update-initramfs: Generating /boot/initrd.img-5.4.0-84-generic
+
+
+#### Repairing a RAID array
+
+    # mark disk as failed
+    pk@pk-lightshow:~$ sudo mdadm --manage /dev/md0 --fail /dev/sdc2
+    mdadm: set /dev/sdc2 faulty in /dev/md0
+    pk@pk-lightshow:~$ sudo mdadm --detail /dev/md0
+    [...]
+        Number   Major   Minor   RaidDevice State
+           -       0        0        0      removed
+           1       8       35        1      active sync   /dev/sdc3
+           3       8       36        2      active sync   /dev/sdc4
+    
+           0       8       34        -      faulty   /dev/sdc2
+    # remove disk from array
+    pk@pk-lightshow:~$ sudo mdadm --manage /dev/md0 --remove /dev/sdc2
+    mdadm: hot removed /dev/sdc2 from /dev/md0
+    pk@pk-lightshow:~$ sudo mdadm --detail /dev/md0
+    [...]
+        Number   Major   Minor   RaidDevice State
+           -       0        0        0      removed
+           1       8       35        1      active sync   /dev/sdc3
+           3       8       36        2      active sync   /dev/sdc4
+    pk@pk-lightshow:~$ # identify failed physical disk to replace it
+    pk@pk-lightshow:~$ sudo hdparm -i /dev/sdc2
+    /dev/sdc2:
+    Model=Samsung SSD 850 EVO 250GB, FwRev=EMT02B6Q, SerialNo=S2R6NX1JC14972X
+    [...]
+    # replace the faulty disk; here, the new "disk" (just using partitions for this test)
+    # will be at sdc2 again
+    # Add new disk (this starts a rebuild in the background)
+    pk@pk-lightshow:~$ sudo mdadm --manage /dev/md0 --add /dev/sdc2
+    # During rebuild, the RAID is in a fragile state as if another disk fails, the data loss
+    # will be complete; RAID 6 is recommended
+    # check rebuild status as usual with mdadm --detail /dev/md0
+
+Cleanup the test raid:
+
+
+
+
+
+
 
 ### Exploration
 
@@ -2688,7 +2970,7 @@ Script:
 - check bash version with $BASH_VERSION and $BASH_VERSINFO: `[[ $BASH_VERSINFO -ge 4 ]]`
 - check if tools needed exist: `[[ ! -a $(which nmao) ]] && echo "nmap not found on system" && exit`
 - write scripts for bourne shell (sh)
-- 
+
 
 ## Not course related
 
@@ -2724,6 +3006,10 @@ Or add it in the .bashrc / own functions file:
 ### show only uncommented lines in a configuration file:
 
 `sed -e "/^#/d" /etc/squid/squid.conf | awk NF`
+
+### Kill window creator process
+
+`sudo xkill`, then click on the unresponsive window
 
 ### commands
 

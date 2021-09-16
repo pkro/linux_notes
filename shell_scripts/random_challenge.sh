@@ -7,8 +7,8 @@ declare sonnets_condensed=sonnets_condensed.txt
 declare -i num_sonnets=154
 declare -i lines_per_sonnet=14
 declare -i random_sonnet_nr=$((($RANDOM % $num_sonnets) + 1))
-declare -i start=$(($random_sonnet_nr * $lines_per_sonnet - $lines_per_sonnet))
-declare -i end=$(($start + $lines_per_sonnet))
+declare -i start=$(($random_sonnet_nr * $lines_per_sonnet - $lines_per_sonnet + 1))
+declare -i end=$(($start + $lines_per_sonnet -1))
 declare -i current_line=1
 
 if [ ! -e ${sonnets_condensed} ]; then
