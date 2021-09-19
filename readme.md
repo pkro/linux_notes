@@ -1927,14 +1927,118 @@ Partitions (in this test all partitions on the same drive) already created with 
     # During rebuild, the RAID is in a fragile state as if another disk fails, the data loss
     # will be complete; RAID 6 is recommended
     # check rebuild status as usual with mdadm --detail /dev/md0
+    #Cleanup the test raid:
+    pk@pk-lightshow:~$ sudo mdadm --stop /dev/md0
+    pk@pk-lightshow:~$ sudo mdadm --remove /dev/md0
+    pk@pk-lightshow:~$ sudo mdadm --zero-superblock /dev/sdc3 /dev/sdc4
 
-Cleanup the test raid:
+#### Local ip address
+
+- `ip address` shows information for all adapters,
+- `ip address show dev [adapter name]` for a specific one
+- private and local IP address ranges:
+  ![private IP address ranges](readme_images/private_ip_ranges.png)
+- If the system gets an 169.254.* address, it can be a sign that DHCP / internet connecion isn't working
 
 
 
+    pk@pk-lightshow:~$ ip address show dev enp5s0
+    # [...],UP,LOWER_UP = Network up, underlying interface up
+    2: enp5s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    # mac address, broadcast address
+    link/ether 40:b0:76:5f:3a:0c brd ff:ff:ff:ff:ff:ff
+    # ip v4 address, broadcast address
+    inet 192.168.178.25/24 brd 192.168.178.255 scope global dynamic noprefixroute enp5s0
+    # IP address lease lifetime
+    valid_lft 861243sec preferred_lft 861243sec
+    # ip v6 address
+    inet6 2a01:c23:90b3:0:a963:a62:23bd:cdd5/64 scope global temporary dynamic
+    valid_lft 6951sec preferred_lft 3351sec
+    inet6 2a01:c23:90b3:0:afa1:927d:e290:d060/64 scope global dynamic mngtmpaddr noprefixroute
+    valid_lft 6951sec preferred_lft 3351sec
+    inet6 fe80::64d1:aeac:16e:bdf3/64 scope link noprefixroute
+    valid_lft forever preferred_lft forev
+
+The network interface name seems somewhat random. Tey are given by "Predictable Network Interface Names" system 
+which sets name based on hardware characteristics and connection.
+
+Ethernet and wireless adapters:
+
+![predictable interface names](readme_images/predictable_interface_names.png)
 
 
+#### DNS
 
+- resolves domain names on a clients request (e.g. opening a page in a browser) to IP addresses
+- service maintainer host authoritative DNS records for their domains
+- DNS servers can forward requests to other DNS servers and cache the responses
+- `BIND` is a common DNS hosting service (service in the sense of process / program)
+  - `sudo apt install bind9` (sic)
+  - forwards requests and caches responses
+  - default configuration perform recursion (looking up entries by querying root servers and authorative servers) for 
+    local clients
+  - [difference between forwarding and recursion](https://serverfault.com/questions/661821/what-s-the-difference-between-recursion-and-forwarding-in-bind)
+  - in the example, we'll change the configuration to forward requests instead of recursion
+  - (main) configuration: `/etc/bind/named.conf.options` (8.8.8.8 is google's dns server)
+
+        # changes in /etc/bind/named.conf.options
+        forwarders {
+                1.1.1.1;
+                8.8.8.8;
+        };
+        forward only;
+
+  - when down, restart bind: `sudo systemctl restart bind9`
+  - to open up the dns server externally, open port 53/udp int the firewall
+
+To test the DNS server, use `dig`: `pk@pi:~$ dig @pi linkedin.com`; if you use it again, the query time will be 
+close to zero as the result is now cached.
+
+
+#### VPN
+
+- creates virtual network devices that tunnels network traffic
+- encrypted or not
+- see "learning vpn" course on linkedin learning
+
+#### Exploring system hardware
+
+- kernel presents system info through virtual filesystems on `/dev` and `/sys`
+- tools: `lshw`, `lshw -short` for a shorter report
+- specialized: `lsusb`, `lspci`, `lsmem`, `lsblk`, `dmidecode`
+- `hdparm` (also sets disk parameters as sudo user); `sudo hdparm -t /dev/[device]` for a quick read benchmark
+
+#### Drivers and modules
+
+- linux kernel supports a lot of hardware (drivers are included in the kernel)
+- add support for hardware for non-supported hardware via loadable kernel module
+  - download and unpack module
+  - install `build-essential` package
+  - in module directory, type `make` (not all drivers have make files)
+  - the `[modulname].ko` file in the resulting files from the build process can be either copied in `/lib/modules` or 
+    enter 
+    `sudo make install` and activate the module with `sudo modprobe [modulname]`
+  - disable temporarily with `sudo rmmod [modulname]` and / or blacklist it in `/etc/modprobe.d`
+  - modules need to be recompiled for new kernels (DKMS can do this automatically)
+
+#### QEMU and KVM
+
+- Allow tp run VMs from the command line
+- QEMU is an emulator providing virtual common, widely supported hardware (processors, interfaces etc.) for guests 
+  so they don't need drivers out of the box for the specific host hardware
+- KVM (kernel-based virtual machine) allows the Linux kernel to act as a hypervisor and provides virtualization that 
+  uses the host's real hardware, speeding up the guest system
+- both of these are used under the hood by many virtualization solutions 
+- VM storage can be either an .iso file. raw device or loop file system
+
+Creating a QEMU VM:
+
+    qemu-system-x86_64 \
+      --drive file=boot.qcow2 \
+      --cdrom install.iso \
+      --accel kvm \
+      -m 4096 \
+      -vnc: 0
 
 ### Exploration
 
