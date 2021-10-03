@@ -2298,7 +2298,7 @@ Useful stuff:
 - command: `snap`, see `snap --help` for more
 - installed snap programs are in the path
 
-### System logs_
+### System logs
 
 See [system logs](#system-logs)
 
@@ -3366,7 +3366,7 @@ Here, we want to give the user "pk" and "daemon" write (and read / execute) acce
     chmod -R 775 php_notes/
 
 
-#### Remove alt-click behaviour so you can use IntelliJ alt-shift-click to set new carets without changing the keymap
+#### Remove alt-click behaviourso you can use IntelliJ alt-shift-click to set new carets without changing the keymap
 
 In Mint(or Cinnamon) the key can be changed or disabled under
 
