@@ -128,7 +128,7 @@
     - [Explore hardware](#explore-hardware)
     - [apt](#apt)
     - [snaps](#snaps)
-    - [System logs](#system-logs-1)
+    - [System logs_](#system-logs_)
     - [Process management](#process-management-1)
     - [Ressource management (processor, memory, storage, heap etc.)](#ressource-management-processor-memory-storage-heap-etc)
     - [Service management](#service-management-1)
