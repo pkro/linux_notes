@@ -553,12 +553,17 @@ Boolean operators to check files and folders:
 #### System logs
 
 - keep track of system activity
-  - Debian: /var/log/syslog
-  - Red Hat: /var/log/messages
+- Text logs
+  - stored in `/var/log`; noteworthy log: `syslog` (managed by `rsyslog`) (Red Hat: `/var/log/messages`)
+- Binary logs
+  - accessed through `journalctl`
+  - managed by systemd-journald
+  - easy to query:
+    - show only specific lines with `journalctl -u [searchstring]`
+    - show errors since last boot: `journalctl -b --priority=3`
 - Other application logs
   - Package manager: `/var/log/dpkg.log`
-  - Activites requiring authorization: `/var/log/auth.log`
-  - etc.
+  - Activities requiring authorization: `/var/log/auth.log`
 
 Using `less` to view a log, we can use `f` and `b` to go forward and backward, `/` to search, enter for next match, 
 `/` + enter for new search. Show only lines containing a search term by typing `&/searchterm`, to exit `&` again.
@@ -2226,12 +2231,21 @@ close to zero as the result is now cached.
 
 Creating a QEMU VM:
 
-    qemu-system-x86_64 \
-      --drive file=boot.qcow2 \
-      --cdrom install.iso \
-      --accel kvm \
+    pk@pk-lightshow:~/$ sudo apt install qemu-system
+    # download an OS image, here ubuntu server mini
+    pk@pk-lightshow:~$ wget http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/mini.iso
+    # create disk image (sparse file)
+    pk@pk-lightshow:~$ qemu-img create -f qcow2 mydisk.qcow2 20G
+    Formatting 'mydisk.qcow2', fmt=qcow2 size=21474836480 cluster_size=65536 lazy_refcounts=off refcount_bits=16
+    pk@pk-lightshow:~$ sudo qemu-system-x86_64 \
+      --drive file=mydisk.qcow2 \
+      --cdrom mini.iso \
       -m 4096 \
-      -vnc: 0
+      -vnc :0 \
+      --accel kvm
+    qemu-system-x86_64: --cdrom mini.iso: Could not open 'mini.iso': No such file or directory
+    # not working, check why; 
+
 
 ### Exploration
 
@@ -2278,18 +2292,9 @@ Useful stuff:
 - command: `snap`, see `snap --help` for more
 - installed snap programs are in the path
 
-### System logs
+### System logs_
 
-- Text logs
-  - stored in `/var/log`; noteworthy logs:
-    - `syslog`
-  - managed by `rsyslog`
-- Binary logs
-  - accessed through `journalctl`
-  - managed by systemd-journald
-  - easy to query:
-    - show only specific lines with `journalctl -u [searchstring]`
-    - show errors since last boot: `journalctl -b --priority=3` 
+See [system logs](#system-logs)
 
 ### Process management
 
