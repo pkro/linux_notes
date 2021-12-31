@@ -3366,7 +3366,7 @@ Here, we want to give the user "pk" and "daemon" write (and read / execute) acce
     chmod -R 775 php_notes/
 
 
-#### Remove alt-click behaviourso you can use IntelliJ alt-shift-click to set new carets without changing the keymap
+#### Remove alt-click behaviour so you can use IntelliJ alt-shift-click to set new carets without changing the keymap
 
 In Mint(or Cinnamon) the key can be changed or disabled under
 
@@ -3389,7 +3389,10 @@ Among other things (try curl cheat.sh/nc for common usages) useful for logging t
 
     nc -l 9003 > xdebug3connections.log
     
-
+#### tee
+  
+Read from standard input and write to standard output and files (or commands). Useful for redirecting output to multiple files.
+  
 #### Use command output as command parameters
 
 use command1 $(command2) to use command2's output as parameters for command2:
