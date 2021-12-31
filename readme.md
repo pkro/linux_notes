@@ -190,9 +190,10 @@
       - [tac](#tac)
       - [xargs and backticks to pipe output of command1 into command2](#xargs-and-backticks-to-pipe-output-of-command1-into-command2)
       - [Give a specified group make a directory access to a folder](#give-a-specified-group-make-a-directory-access-to-a-folder)
-      - [Remove alt-click behaviourso you can use IntelliJ alt-shift-click to set new carets without changing the keymap](#remove-alt-click-behaviourso-you-can-use-intellij-alt-shift-click-to-set-new-carets-without-changing-the-keymap)
+      - [Remove alt-click behaviour so you can use IntelliJ alt-shift-click to set new carets without changing the keymap](#remove-alt-click-behaviour-so-you-can-use-intellij-alt-shift-click-to-set-new-carets-without-changing-the-keymap)
       - [Open port](#open-port)
       - [nc](#nc)
+      - [tee](#tee)
       - [Use command output as command parameters](#use-command-output-as-command-parameters)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
