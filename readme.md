@@ -128,7 +128,7 @@
     - [Explore hardware](#explore-hardware)
     - [apt](#apt)
     - [snaps](#snaps)
-    - [System logs_](#system-logs_)
+    - [System logs](#system-logs-1)
     - [Process management](#process-management-1)
     - [Ressource management (processor, memory, storage, heap etc.)](#ressource-management-processor-memory-storage-heap-etc)
     - [Service management](#service-management-1)
@@ -193,6 +193,7 @@
       - [Remove alt-click behaviour so you can use IntelliJ alt-shift-click to set new carets without changing the keymap](#remove-alt-click-behaviour-so-you-can-use-intellij-alt-shift-click-to-set-new-carets-without-changing-the-keymap)
       - [Open port](#open-port)
       - [nc](#nc)
+      - [tee](#tee)
       - [Use command output as command parameters](#use-command-output-as-command-parameters)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -3472,7 +3473,7 @@ Here, we want to give the user "pk" and "daemon" write (and read / execute) acce
     chmod -R 775 php_notes/
 
 
-#### Remove alt-click behaviourso you can use IntelliJ alt-shift-click to set new carets without changing the keymap
+#### Remove alt-click behaviour so you can use IntelliJ alt-shift-click to set new carets without changing the keymap
 
 In Mint(or Cinnamon) the key can be changed or disabled under
 
@@ -3495,7 +3496,10 @@ Among other things (try curl cheat.sh/nc for common usages) useful for logging t
 
     nc -l 9003 > xdebug3connections.log
     
-
+#### tee
+  
+Read from standard input and write to standard output and files (or commands). Useful for redirecting output to multiple files.
+  
 #### Use command output as command parameters
 
 use command1 $(command2) to use command2's output as parameters for command2:
