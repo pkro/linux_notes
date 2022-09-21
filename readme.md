@@ -753,8 +753,21 @@ Commands to show user or group info: `id`, `groups`, `getent [group|services|pas
 - Unit configuration files in `/lib/systemd/system/`, e.g. `/lib/systemd/system/rsyslog.service`; own units can be 
   added here as well.  
 
-Common systemctl commands:
-![common systemctl commands](readme_images/systemctl.png)
+Common systemctl commands (from https://askubuntu.com/questions/19320/how-to-enable-or-disable-services):
+
+- `sudo systemctl start SERVICE`: Use it to start a service. Does not persist after reboot
+- `sudo systemctl stop SERVICE`: Use it to stop a service. Does not persist after reboot
+- `sudo systemctl restart SERVICE`: Use it to restart a service
+- `sudo systemctl reload SERVICE`: If the service supports it, it will reload the config files related to it without interrupting any process that is using the service.
+    systemctl status SERVICE`: Shows the status of a service. Tells whether a service is currently running.
+- `sudo systemctl enable SERVICE`: Turns the service on, on the next reboot or on the next start event. It persists after reboot.
+- `sudo systemctl disable SERVICE`: Turns the service off on the next reboot or on the next stop event. It persists after reboot.
+    systemctl is-enabled SERVICE`: Check if a service is currently configured to start or not on the next reboot.
+    systemctl is-active SERVICE`: Check if a service is currently active.
+    systemctl show SERVICE`: Show all the information about the service.
+- `sudo systemctl mask SERVICE`: Completely disable a service by linking it to /dev/null; you cannot start the service manually or enable the service.
+- `sudo systemctl unmask SERVICE`: Removes the link to /dev/null and restores the ability to enable and or manually start the service.
+
 
 #### Backup with rsync
 
@@ -2252,8 +2265,100 @@ Creating a QEMU VM:
     qemu-system-x86_64: --cdrom mini.iso: Could not open 'mini.iso': No such file or directory
     # not working, check why; 
 
+#### Private networking
+
+- No crossover cables are necesssary anymore
+- Switches allow to connect 3+ Systems
+- Setting static IP addresses allows them to communicate
+
+Network settings locations:
+
+- Debian based distros: `/etc/network/interfaces`
+- Redhat based distros: `/etc/sysconfig/network-scripts`
+- Some distros now use NetworkManager (`nmcli`, `nmtui`); check with `nmcli d` which network interfaces are managed by it
+- Recent Ubuntu releases use Netplan (`/etc/netplan`) using yaml files; on Desktop versions, netplan is often set up to use NetworkManager to manage settings
+
 
 ### Exploration
+
+#### Using diff
+
+Compares files. The output notations are `ed` commands to move around and change content of a file. Can be used to generate patch files.
+    
+    pk@pk-lightshow:~/tmp$ paste file1 file2 | pr -t -e20
+    apple               apple
+    banana              banana
+    cherry              cherry
+    dragonfruit         elderberry
+    elderberry          dragonfruit
+    fig                 fig
+    grapefruit          grapefruit
+    honeydew            honeydew
+    
+    pk@pk-lightshow:~/tmp$ diff file1 file2
+    4d3 # line 4 of left file is missing / (d)eleted in the right file
+    < dragonfruit
+    5a5 # line 5 differs / has been (a)ppended to the right file
+    > dragonfruit
+    pk@pk-lightshow:~/tmp$ diff -y file1 file2
+    apple								apple
+    banana								banana
+    cherry								cherry
+    dragonfruit						      <
+    elderberry							elderberry
+    >	dragonfruit
+    fig								fig
+    grapefruit							grapefruit
+    honeydew							honeydew
+
+    # | indicates that line has changed
+    pk@pk-lightshow:~/tmp$ diff -y file1 file4
+    apple								apple
+    banana								banana
+    cherry								cherry
+    dragonfruit						      |	durian
+    elderberry							elderberry
+    fig								fig
+    grapefruit							grapefruit
+    honeydew							honeydew
+
+    pk@pk-lightshow:~/tmp$ diff file1 file5
+    1,3c1,3
+    < apple
+    < banana
+    < cherry
+    ---
+    > apricot
+    > blueberry
+    > coconut
+
+#### Using xargs
+
+xargs takes the output of a command and uses it as arguments for a command *line by line* (so it calls the command multiple times for multiple lines in the output from the first command). By itself, it just echoes it out.
+
+Example: copy files that match a certain criteria from *anywhere* on the system to a specific directory:
+
+    # {}=standin, can be anything
+    pk@pk-lightshow:~$ find ~/Pictures -name "*.jpg" | xargs -I "{}" echo We found {}
+    We found /home/pk/Pictures/tv/formular.jpg
+    We found /home/pk/Pictures/tv/klebeband.jpg
+    We found /home/pk/Pictures/stars_sky_night_113553_1920x1080.jpg
+    We found /home/pk/Pictures/heckl.jpg
+    We found /home/pk/Pictures/sky/sky.jpg
+    [...]
+    # copy all jpgs to a specific folder and preserve path (--parents)
+    # this preserves the FULL path, so it starts form ~/tmp/home/username/Pictures/...
+    pk@pk-lightshow:~$ find ~/Pictures -name "*.jpg" | xargs -I "{}" cp --parents {} ~/tmp/
+
+This example could also with the `find -exec` option. 
+
+#### Using watch and time
+
+- `watch`: run a command at a given interval and shows / refreshes the output (default every 2 seconds), like `top` refreshes. Example: `watch lsmem`
+- `time`: show how long a command took to complete. Example: `time ls`
+
+
+
 
 
 ## Building an Ubuntu server notes
@@ -3326,6 +3431,7 @@ Or add it in the .bashrc / own functions file:
 Shows lines in a file in reverse order (reversed `cat`)
 
 #### xargs and backticks to pipe output of command1 into command2
+
 Output directory of first mach of locate
 
     locate --limit 1 DOOM2.WAD | grep -o "^.*\/" | xargs ls
